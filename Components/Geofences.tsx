@@ -4,8 +4,9 @@ import { Text } from "react-native";
 
 export default class Geofences extends React.Component {
     static navigationOptions = {
-        drawerLabel: "Geofences1",
+        title: "Geofences",
     }
+
     render() {
         return (
             <View>
