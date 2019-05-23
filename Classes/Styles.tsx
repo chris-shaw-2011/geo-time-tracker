@@ -1,6 +1,9 @@
 import React from "react"
 import { StyleSheet } from "react-native";
 
+export const defaultColor = "red";
+export const textColor = "white"
+
 const styles = StyleSheet.create({
     button: {
         width: "75%",
@@ -14,10 +17,10 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     header: {
-        backgroundColor: "red",
+        backgroundColor: defaultColor,
     },
     menu: {
-        color: "white",
+        color: textColor,
     },
     loadingView: { 
         flex: 1, 

@@ -1,11 +1,10 @@
 import React from "react"
 import { Container, Button, H3, Text } from "native-base";
 import { View } from "react-native";
+import NavigationOptions from "../Classes/NavigationOptions";
 
 export default class Home extends React.Component {
-    static navigationOptions = {
-        title: "Home",
-    }
+    static navigationOptions = NavigationOptions("Home")
 
     render() {
         return (
