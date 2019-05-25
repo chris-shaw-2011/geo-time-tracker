@@ -2,9 +2,10 @@ import React from "react"
 import { Container, Button, H3, Text } from "native-base";
 import { View } from "react-native";
 import NavigationOptions from "../Classes/NavigationOptions";
+import { Page } from "./Page";
 
-export default class Home extends React.Component {
-    static navigationOptions = NavigationOptions("Home")
+export default class Home extends Page {
+    title: string = "Home"
 
     render() {
         return (

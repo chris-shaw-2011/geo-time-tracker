@@ -1,6 +1,6 @@
 import React from 'react';
 import { Header, Body, Title, Icon, Left, Right } from "native-base"
-import { createDrawerNavigator, createStackNavigator, createAppContainer, DrawerActions, NavigationContainer, DrawerItems, createSwitchNavigator, NavigationContainerComponent, NavigationActions } from "react-navigation";
+import { createDrawerNavigator, createStackNavigator, createAppContainer, DrawerActions, DrawerItems, createSwitchNavigator, NavigationContainerComponent, NavigationActions } from "react-navigation";
 import Home from "./Home"
 import Geofences from './Geofences';
 import LogIn from './LogIn';
@@ -11,14 +11,23 @@ import GlobalSettingsContext from '../Classes/GlobalSettingsContext';
 import Settings from './Settings';
 import { AppStatus } from '../Classes/Enumerations';
 import Loading from './Loading';
+import Geofence from "./Geofence"
 
 interface Props {
     appStatus: AppStatus,
 }
 
+const GeofencesStack = createStackNavigator({
+    GeofencesList: { screen: Geofences },
+    Geofence: { screen: Geofence }
+}, {
+        headerMode: "none",
+        initialRouteName: "GeofencesList",
+    })
+
 const Drawer = createDrawerNavigator({
     Home: { screen: Home },
-    Geofences: { screen: Geofences },
+    Geofences: { screen: GeofencesStack },
     Settings: { screen: Settings },
 },
     {
@@ -45,21 +54,20 @@ const DrawerStack = createStackNavigator({
     {
         headerMode: "none",
         navigationOptions: () => ({
-            header: props => {
-                var drawerRoute = props.scene.route.routes[props.scene.route.index];
-                var visibleScene = Drawer.router.getComponentForRouteName(drawerRoute.routes[drawerRoute.index].key);
-
-                return (
-                    <Header androidStatusBarColor={defaultColor} style={styles.header}>
-                        <Left>
-                            <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />
-                        </Left>
-                        <Body>
-                            <Title style={styles.title}>{visibleScene.navigationOptions.title}</Title>
-                        </Body>
-                        <Right />
-                    </Header>)
-            }
+            header: props => (
+                <Header androidStatusBarColor={defaultColor} style={styles.header}>
+                    <Left>
+                        <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />
+                    </Left>
+                    <Body>
+                        <Title style={styles.title}>
+                            <GlobalSettingsContext.Consumer>
+                                {value => value.title}
+                            </GlobalSettingsContext.Consumer>
+                        </Title>
+                    </Body>
+                    <Right />
+                </Header>)
         })
     }
 )

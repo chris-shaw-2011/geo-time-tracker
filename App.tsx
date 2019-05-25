@@ -32,6 +32,8 @@ export default class App extends Component<Props, State> {
 
         this.logIn = this.logIn.bind(this);
         this.logOut = this.logOut.bind(this);
+        this.updateGeofence = this.updateGeofence.bind(this);
+        this.setTitle = this.setTitle.bind(this);
     }
 
     async componentDidMount() {
@@ -41,11 +43,9 @@ export default class App extends Component<Props, State> {
             name: "database",
             location: "default",
         })
-        var username = "";
-        var token = "";
 
         await db.executeSql(`
-            CREATE TABLE IF NOT EXISTS geofences (name TEXT PRIMARY KEY, latitude FLOAT, longitude FLOAT, radius FLOAT);
+            CREATE TABLE IF NOT EXISTS geofence (name TEXT PRIMARY KEY, latitude FLOAT, longitude FLOAT, radius FLOAT);
         `)
 
         const version = (await db.executeSql("PRAGMA user_version"))[0].rows.item(0).user_version as Number;
@@ -54,8 +54,13 @@ export default class App extends Component<Props, State> {
             await db.executeSql("PRAGMA user_version = 1")
         }
 
-        username = await AsyncStorage.getItem("username") || ""
-        token = await AsyncStorage.getItem("token") || ""
+        await this.loadInitialData(db)
+    }
+
+    async loadInitialData(db: SQLite.SQLiteDatabase) {
+        var username = await AsyncStorage.getItem("username") || "";
+        var token = await AsyncStorage.getItem("token") || "";
+        var geofences = await this.loadGeofencesFromDb(db);
 
         this.setState(({ globalSettings }) => {
             return {
@@ -66,7 +71,10 @@ export default class App extends Component<Props, State> {
                     db: db,
                     logInSuccessful: this.logIn,
                     logOut: this.logOut,
-                    defaultGlobalSettings: globalSettings
+                    defaultGlobalSettings: globalSettings,
+                    geofences: geofences,
+                    updateGeofence: this.updateGeofence,
+                    setTitle: this.setTitle,
                 })
             }
         })
@@ -96,6 +104,67 @@ export default class App extends Component<Props, State> {
                 appStatus: AppStatus.NotLoggedIn,
                 globalSettings: new GlobalSettings({
                     token: "",
+                    defaultGlobalSettings: globalSettings,
+                })
+            }
+        })
+    }
+
+    async updateGeofence(newGeofence?: Geofence, originalName?: string) {
+        const db = this.state.globalSettings.db;
+        var sql: string;
+        var params: any[];
+
+        if (newGeofence) {
+            params = [newGeofence.name, newGeofence.coords.latitude, newGeofence.coords.longitude, newGeofence.radius]
+
+            if (originalName) {
+                sql = "UPDATE geofence SET name = ?, latitude = ?, longitude = ?, radius = ? WHERE name = ?"
+                params.push(originalName);
+            }
+            else {
+                sql = "INSERT INTO geofence (name, latitude, longitude, radius) VALUES(?, ?, ?, ?)"
+            }
+        }
+        else {
+            sql = "DELETE FROM geofence WHERE name = ?"
+            params = [originalName]
+        }
+
+        await db.executeSql(sql, params);
+
+        const geofences = await this.loadGeofencesFromDb(db);
+
+        this.setState(({ globalSettings }) => {
+            return {
+                appStatus: AppStatus.LoggedIn,
+                globalSettings: new GlobalSettings({
+                    geofences: geofences,
+                    defaultGlobalSettings: globalSettings,
+                })
+            }
+        })
+    }
+
+    async loadGeofencesFromDb(db:SQLite.SQLiteDatabase) {
+        var geofenceRows = (await db.executeSql("SELECT name, latitude, longitude, radius FROM geofence ORDER BY name"))[0].rows;
+        var geofences = new Array<Geofence>()
+
+        for (var i = 0; i < geofenceRows.length; ++i) {
+            var item = geofenceRows.item(i);
+
+            geofences.push(new Geofence(item.name, { latitude: item.latitude, longitude: item.longitude }, item.radius))
+        }
+
+        return geofences;
+    }
+
+    setTitle(title:string) {
+        this.setState(({ globalSettings }) => {
+            return {
+                appStatus: AppStatus.LoggedIn,
+                globalSettings: new GlobalSettings({
+                    title: title,
                     defaultGlobalSettings: globalSettings,
                 })
             }

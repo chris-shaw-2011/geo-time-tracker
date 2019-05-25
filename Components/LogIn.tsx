@@ -18,7 +18,7 @@ interface State {
 }
 
 export default class LogIn extends Page<Props, State> {
-    static navigationOptions = NavigationOptions("Log In")
+    title = "Log In"
 
     constructor(props: Props, context: React.ContextType<React.Context<GlobalSettings>>) {
         super(props)

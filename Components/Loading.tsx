@@ -5,8 +5,6 @@ import styles, { defaultColor } from "../Classes/Styles";
 import NavigationOptions from "../Classes/NavigationOptions";
 
 export default class Loading extends React.Component {
-    static navigationOptions = NavigationOptions("Geo Time Tracker")
-
     render() {
         return (
             <View style={styles.loadingView}>

@@ -14,9 +14,7 @@ interface Props {
 }
 
 export default class Settings extends Page<Props> {
-    static navigationOptions = NavigationOptions("Settings", {drawerLabel: () => null})
-    static contextType = GlobalSettingsContext
-    context!: React.ContextType<React.Context<GlobalSettings>>;
+    title = "Settings"
 
     constructor(props: Props) {
         super(props);

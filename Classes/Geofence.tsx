@@ -1,6 +1,13 @@
+import { LatLng } from "react-native-maps";
+
 export default class Geofence {
-    public name: string = "";
-    public latitude: number = 0;
-    public longitude: number = 0;
-    public radius: number = 0;
+    constructor(name?: string, coords?: LatLng, radius?: number) {
+        this.name = name || "";
+        this.coords = coords || { latitude: 0, longitude: 0 }
+        this.radius = radius || 0;
+    }
+
+    public name: string;
+    public coords: LatLng
+    public radius: number;
 }

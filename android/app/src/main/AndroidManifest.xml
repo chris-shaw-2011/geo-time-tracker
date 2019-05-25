@@ -24,6 +24,8 @@
       <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
 
         <service android:name=".GeofenceTransitionsIntentService" />
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBrlu3FEdKfTzRu7DnwxaPfwmwUg8EezFs"/>
     </application>
-
 </manifest>
