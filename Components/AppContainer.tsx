@@ -87,7 +87,22 @@ const NotLoggedIn = createStackNavigator({
     }
 },
     {
-        headerMode: "float",
+/*        headerMode: "float",
+        navigationOptions: () => ({
+            header: (
+                <Header androidStatusBarColor={defaultColor} style={styles.header}>
+                    <Left />
+                    <Body>
+                        <Title style={styles.title}>Log In</Title>
+                    </Body>
+                    <Right />
+                </Header>)
+        })*/
+        defaultNavigationOptions: {
+            title: "Log In",
+            headerStyle: styles.header,
+            headerTitleStyle: styles.title,
+        }
     }
 )
 
@@ -97,7 +112,23 @@ const LoadingStack = createStackNavigator({
     }
 },
     {
-        headerMode: "float",
+/*        headerMode: "float",
+        navigationOptions: () => ({
+            header: (
+                <Header androidStatusBarColor={defaultColor} style={styles.header}>
+                    <Left />
+                    <Body>
+                        <Title style={styles.title}>Geo Time Tracker</Title>
+                    </Body>
+                    <Right />
+                </Header>)
+        })*/
+        defaultNavigationOptions: {
+            title: "Loading",
+            headerStyle: styles.header,
+            headerTitleStyle: styles.title,
+        }
+
     }
 )
 
@@ -114,7 +145,6 @@ const Container = createAppContainer(createSwitchNavigator({
 },
     {
         initialRouteName: 'Loading',
-
     }
 ))
 

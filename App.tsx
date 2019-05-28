@@ -62,6 +62,7 @@ export default class App extends Component<Props, State> {
         var token = await AsyncStorage.getItem("token") || "";
         var geofences = await this.loadGeofencesFromDb(db);
 
+//        setTimeout(() => {
         this.setState(({ globalSettings }) => {
             return {
                 appStatus: token && username ? AppStatus.LoggedIn : AppStatus.NotLoggedIn,
@@ -78,6 +79,7 @@ export default class App extends Component<Props, State> {
                 })
             }
         })
+//    }, 10000)
     }
 
     async logIn(username: string, token: string) {
@@ -137,7 +139,6 @@ export default class App extends Component<Props, State> {
 
         this.setState(({ globalSettings }) => {
             return {
-                appStatus: AppStatus.LoggedIn,
                 globalSettings: new GlobalSettings({
                     geofences: geofences,
                     defaultGlobalSettings: globalSettings,
@@ -162,7 +163,6 @@ export default class App extends Component<Props, State> {
     setTitle(title:string) {
         this.setState(({ globalSettings }) => {
             return {
-                appStatus: AppStatus.LoggedIn,
                 globalSettings: new GlobalSettings({
                     title: title,
                     defaultGlobalSettings: globalSettings,
