@@ -1,4 +1,3 @@
-import React from "react"
 import { StyleSheet } from "react-native";
 
 export const defaultColor = "red";
@@ -22,10 +21,10 @@ const styles = StyleSheet.create({
     menu: {
         color: textColor,
     },
-    loadingView: { 
-        flex: 1, 
-        alignItems: 'center', 
-        justifyContent: 'center' 
+    loadingView: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center'
     },
     error: {
         borderColor: "red",

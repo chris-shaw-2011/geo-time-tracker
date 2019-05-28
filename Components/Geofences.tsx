@@ -1,7 +1,6 @@
 import React from "react"
 import { Button, ListItem, Container, Content, Left, Right, Icon } from "native-base";
 import { Text, FlatList } from "react-native";
-import NavigationOptions from "../Classes/NavigationOptions";
 import styles from "../Classes/Styles";
 import { Page } from "./Page";
 import { NavigationState, NavigationScreenProp, NavigationParams } from "react-navigation";

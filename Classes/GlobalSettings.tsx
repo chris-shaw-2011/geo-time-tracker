@@ -1,11 +1,10 @@
 import { SQLiteDatabase } from "react-native-sqlite-storage";
 import Geofence from "./Geofence";
 
-
 type LogInSuccessful = (username: string, token: string) => Promise<void>;
 type LogOut = () => Promise<void>;
-type UpdateGeofence = (newGeofence?:Geofence, originalName?:string) => Promise<void>;
-type SetTitle = (title:string) => void
+type UpdateGeofence = (newGeofence?: Geofence, originalName?: string) => Promise<void>;
+type SetTitle = (title: string) => void
 
 interface GlobalSettingsConstructor {
     username?: string;
@@ -15,9 +14,9 @@ interface GlobalSettingsConstructor {
     logOut?: LogOut
     geofences?: Geofence[],
     defaultGlobalSettings: GlobalSettings | undefined
-    updateGeofence?:UpdateGeofence,
-    setTitle?:SetTitle,
-    title?:string,
+    updateGeofence?: UpdateGeofence,
+    setTitle?: SetTitle,
+    title?: string,
 }
 
 export default class GlobalSettings {
@@ -28,8 +27,8 @@ export default class GlobalSettings {
     private _logOut?: LogOut
     private readonly _geofences: Geofence[]
     private _updateGeofence?: UpdateGeofence
-    private _setTitle?:SetTitle
-    private _title?:string;
+    private _setTitle?: SetTitle
+    private _title?: string;
 
     public get db(): SQLiteDatabase {
         return this._db!;
@@ -60,11 +59,11 @@ export default class GlobalSettings {
      * @param newGeofence The new values of the geofence or undefined if you want to delete it
      * @param originalName The original name of the geofence you want to update (or delete), undefined if creating a new geofence
      */
-    public updateGeofence(newGeofence?:Geofence, originalName?:string) {
+    public updateGeofence(newGeofence?: Geofence, originalName?: string) {
         return this._updateGeofence!(newGeofence, originalName);
     }
 
-    public setTitle(title:string) {
+    public setTitle(title: string) {
         return this._setTitle!(title);
     }
 
@@ -80,7 +79,7 @@ export default class GlobalSettings {
         this._title = GlobalSettings.constructorValue("title", settings, "")
     }
 
-    private static constructorValue<T>(field: string, settings: any, defaultValue: T) : T {
-        return settings && (settings[field] || settings[field] === "")? settings[field] : settings && settings.defaultGlobalSettings && settings.defaultGlobalSettings["_" + field] ? settings.defaultGlobalSettings["_" + field] : defaultValue;
+    private static constructorValue<T>(field: string, settings: any, defaultValue: T): T {
+        return settings && (settings[field] || settings[field] === "") ? settings[field] : settings && settings.defaultGlobalSettings && settings.defaultGlobalSettings["_" + field] ? settings.defaultGlobalSettings["_" + field] : defaultValue;
     }
 }

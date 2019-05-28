@@ -1,10 +1,8 @@
 import React from "react"
 import { Container, Content, Form, Item, Input, Label, Button, Icon } from "native-base";
 import GlobalSettings from "../Classes/GlobalSettings";
-import { NavigationScreenProp, NavigationState, NavigationParams } from "react-navigation";
 import { Text } from "react-native";
 import styles from "../Classes/Styles";
-import NavigationOptions from "../Classes/NavigationOptions";
 import { Page } from "./Page";
 
 interface Props {

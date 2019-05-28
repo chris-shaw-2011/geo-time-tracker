@@ -1,6 +1,6 @@
 import React from 'react';
 import { Header, Body, Title, Icon, Left, Right } from "native-base"
-import { createDrawerNavigator, createStackNavigator, createAppContainer, DrawerActions, DrawerItems, createSwitchNavigator, NavigationContainerComponent, NavigationActions } from "react-navigation";
+import { createDrawerNavigator, createStackNavigator, createAppContainer, DrawerActions, DrawerItems, createSwitchNavigator, NavigationContainerComponent, NavigationActions, HeaderProps } from "react-navigation";
 import Home from "./Home"
 import Geofences from './Geofences';
 import LogIn from './LogIn';
@@ -16,6 +16,30 @@ import Geofence from "./Geofence"
 interface Props {
     appStatus: AppStatus,
 }
+
+interface AppHeaderProps extends HeaderProps {
+    allowDrawer?: boolean,
+    title?: string
+}
+
+const AppHeader = (props: AppHeaderProps) => (
+    <Header androidStatusBarColor={defaultColor} style={styles.header}>
+        <Left>
+            {props.allowDrawer && <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />}
+        </Left>
+        <Body>
+            <Title style={styles.title}>
+                {props.title ?
+                    props.title :
+                    <GlobalSettingsContext.Consumer>
+                        {value => value.title}
+                    </GlobalSettingsContext.Consumer>
+                }
+            </Title>
+        </Body>
+        <Right />
+    </Header>
+)
 
 const GeofencesStack = createStackNavigator({
     GeofencesList: { screen: Geofences },
@@ -52,34 +76,12 @@ const DrawerStack = createStackNavigator({
     Drawer: { screen: Drawer }
 },
     {
-        headerMode: "none",
-        navigationOptions: () => ({
-            header: props => (
-                <Header androidStatusBarColor={defaultColor} style={styles.header}>
-                    <Left>
-                        <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />
-                    </Left>
-                    <Body>
-                        <Title style={styles.title}>
-                            <GlobalSettingsContext.Consumer>
-                                {value => value.title}
-                            </GlobalSettingsContext.Consumer>
-                        </Title>
-                    </Body>
-                    <Right />
-                </Header>)
-        })
+        headerMode: "float",
+        defaultNavigationOptions: {
+            header: props => (<AppHeader allowDrawer={true} {...props} />)
+        }
     }
 )
-
-const LoggedIn = createStackNavigator({
-    DrawerStackScreen: {
-        screen: DrawerStack,
-    }
-},
-    {
-        headerMode: "float",
-    });
 
 const NotLoggedIn = createStackNavigator({
     LogInScreen: {
@@ -87,21 +89,8 @@ const NotLoggedIn = createStackNavigator({
     }
 },
     {
-/*        headerMode: "float",
-        navigationOptions: () => ({
-            header: (
-                <Header androidStatusBarColor={defaultColor} style={styles.header}>
-                    <Left />
-                    <Body>
-                        <Title style={styles.title}>Log In</Title>
-                    </Body>
-                    <Right />
-                </Header>)
-        })*/
         defaultNavigationOptions: {
-            title: "Log In",
-            headerStyle: styles.header,
-            headerTitleStyle: styles.title,
+            header: props => (<AppHeader title="Log In" {...props} />),
         }
     }
 )
@@ -112,21 +101,8 @@ const LoadingStack = createStackNavigator({
     }
 },
     {
-/*        headerMode: "float",
-        navigationOptions: () => ({
-            header: (
-                <Header androidStatusBarColor={defaultColor} style={styles.header}>
-                    <Left />
-                    <Body>
-                        <Title style={styles.title}>Geo Time Tracker</Title>
-                    </Body>
-                    <Right />
-                </Header>)
-        })*/
         defaultNavigationOptions: {
-            title: "Loading",
-            headerStyle: styles.header,
-            headerTitleStyle: styles.title,
+            header: props => (<AppHeader title="Geo Time Tracker" {...props} />),
         }
 
     }
@@ -134,7 +110,7 @@ const LoadingStack = createStackNavigator({
 
 const Container = createAppContainer(createSwitchNavigator({
     LoggedIn: {
-        screen: LoggedIn,
+        screen: DrawerStack,
     },
     Loading: {
         screen: LoadingStack,
@@ -149,10 +125,6 @@ const Container = createAppContainer(createSwitchNavigator({
 ))
 
 export default class AppContainer extends React.Component<Props> {
-    constructor(props: Props) {
-        super(props)
-    }
-
     navigator: NavigationContainerComponent | null = null;
 
     componentWillReceiveProps(props: Props) {
