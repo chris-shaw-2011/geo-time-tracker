@@ -1,7 +1,7 @@
 import React from 'react';
 import { Header, Body, Title, Icon, Left, Right } from "native-base"
 import { createDrawerNavigator, createStackNavigator, createAppContainer, DrawerActions, DrawerItems, createSwitchNavigator, NavigationContainerComponent, NavigationActions, HeaderProps } from "react-navigation";
-import Home from "./Home"
+import Timecards from "./Timecards"
 import Geofences from './Geofences';
 import LogIn from './LogIn';
 import styles, { defaultColor } from "../Classes/Styles";
@@ -50,7 +50,7 @@ const GeofencesStack = createStackNavigator({
     })
 
 const Drawer = createDrawerNavigator({
-    Home: { screen: Home },
+    Timecards: { screen: Timecards },
     Geofences: { screen: GeofencesStack },
     Settings: { screen: Settings },
 },

@@ -6,6 +6,54 @@ import GlobalSettingsContext from './Classes/GlobalSettingsContext';
 import GlobalSettings from './Classes/GlobalSettings';
 import AsyncStorage from '@react-native-community/async-storage';
 import { AppStatus } from "./Classes/Enumerations";
+import Timecard, { ActiveTimecard } from './Classes/Timecard';
+import PushNotification from "react-native-push-notification"
+import { DeviceEventEmitter } from 'react-native';
+import moment from "moment"
+import db from "./Classes/Database"
+import GlobalEvents, { Event } from "./Classes/GlobalEvents"
+
+PushNotification.configure({
+
+    // (optional) Called when Token is generated (iOS and Android)
+    onRegister: function (token) {
+        console.log('TOKEN:', token);
+    },
+
+    // (required) Called when a remote or local notification is opened or received
+    onNotification: function (notification) {
+
+        if(notification.action == "Clock Out") {
+            Timecard.activeTimecard!.clockOut()
+        }
+
+        // process the notification
+
+        // required on iOS only (see fetchCompletionHandler docs: https://facebook.github.io/react-native/docs/pushnotificationios.html)
+        //        notification.finish(PushNotificationIOS.FetchResult.NoData);
+    },
+
+    // ANDROID ONLY: GCM or FCM Sender ID (product_number) (optional - not required for local notifications, but is need to receive remote push notifications)
+    //senderID: "YOUR GCM (OR FCM) SENDER ID",
+
+    // IOS ONLY (optional): default: all - Permissions to register.
+    permissions: {
+        alert: true,
+        badge: true,
+        sound: true
+    },
+
+    // Should the initial notification be popped automatically
+    // default: true
+    popInitialNotification: true,
+
+    /**
+      * (optional) default: true
+      * - Specified if permissions (ios) and token (android and ios) will requested or not,
+      * - if not, you must call PushNotificationsHandler.requestPermissions() later
+      */
+    requestPermissions: true,
+});
 
 interface Props {
 
@@ -14,7 +62,7 @@ interface State {
     geofences: Geofence[],
     appStatus: AppStatus,
     loggedInInitially: boolean,
-    globalSettings: GlobalSettings
+    globalSettings: GlobalSettings,
 }
 
 export default class App extends Component<Props, State> {
@@ -34,42 +82,34 @@ export default class App extends Component<Props, State> {
         this.logOut = this.logOut.bind(this);
         this.updateGeofence = this.updateGeofence.bind(this);
         this.setTitle = this.setTitle.bind(this);
+        this.notificationAction = this.notificationAction.bind(this);
+
+        PushNotification.registerNotificationActions(['Clock Out']);
+
+        DeviceEventEmitter.addListener('notificationActionReceived', this.notificationAction);
     }
 
     async componentDidMount() {
         SQLite.enablePromise(true);
 
-        const db = await SQLite.openDatabase({
-            name: "database",
-            location: "default",
-        })
-
-        await db.executeSql(`
-            CREATE TABLE IF NOT EXISTS geofence (name TEXT PRIMARY KEY, latitude FLOAT, longitude FLOAT, radius FLOAT);
-        `)
-
-        const version = (await db.executeSql("PRAGMA user_version"))[0].rows.item(0).user_version as Number;
-
-        if (version === 0) {
-            await db.executeSql("PRAGMA user_version = 1")
-        }
-
-        await this.loadInitialData(db)
+        await this.loadInitialData()
     }
 
-    async loadInitialData(db: SQLite.SQLiteDatabase) {
+    async loadInitialData() {
         var username = await AsyncStorage.getItem("username") || "";
         var token = await AsyncStorage.getItem("token") || "";
-        var geofences = await this.loadGeofencesFromDb(db);
+        var geofences = await this.loadGeofencesFromDb();
+        const activeTimecard = Timecard.fromDatabase((await db.executeSql("SELECT *, rowid FROM timecard WHERE timeOut is null"))[0].rows).pop();
 
-//        setTimeout(() => {
+        Timecard.activeTimecard = activeTimecard ? new ActiveTimecard(activeTimecard) : undefined;
+
+        //        setTimeout(() => {
         this.setState(({ globalSettings }) => {
             return {
                 appStatus: token && username ? AppStatus.LoggedIn : AppStatus.NotLoggedIn,
                 globalSettings: new GlobalSettings({
                     username: username,
                     token: token,
-                    db: db,
                     logInSuccessful: this.logIn,
                     logOut: this.logOut,
                     defaultGlobalSettings: globalSettings,
@@ -79,7 +119,7 @@ export default class App extends Component<Props, State> {
                 })
             }
         })
-//    }, 10000)
+        //    }, 10000)
     }
 
     async logIn(username: string, token: string) {
@@ -113,7 +153,6 @@ export default class App extends Component<Props, State> {
     }
 
     async updateGeofence(newGeofence?: Geofence, originalName?: string) {
-        const db = this.state.globalSettings.db;
         var sql: string;
         var params: any[];
 
@@ -135,7 +174,7 @@ export default class App extends Component<Props, State> {
 
         await db.executeSql(sql, params);
 
-        const geofences = await this.loadGeofencesFromDb(db);
+        const geofences = await this.loadGeofencesFromDb();
 
         this.setState(({ globalSettings }) => {
             return {
@@ -147,7 +186,7 @@ export default class App extends Component<Props, State> {
         })
     }
 
-    async loadGeofencesFromDb(db:SQLite.SQLiteDatabase) {
+    async loadGeofencesFromDb() {
         var geofenceRows = (await db.executeSql("SELECT name, latitude, longitude, radius FROM geofence ORDER BY name"))[0].rows;
         var geofences = new Array<Geofence>()
 
@@ -160,7 +199,7 @@ export default class App extends Component<Props, State> {
         return geofences;
     }
 
-    setTitle(title:string) {
+    setTitle(title: string) {
         this.setState(({ globalSettings }) => {
             return {
                 globalSettings: new GlobalSettings({
@@ -169,6 +208,14 @@ export default class App extends Component<Props, State> {
                 })
             }
         })
+    }
+
+    notificationAction(action: any) {
+        console.log('Notification action received: ' + action);
+        const info = JSON.parse(action.dataJSON);
+        if (info.action == 'Clock Out') {
+            // Do work pertaining to Accept action here
+        }
     }
 
     render() {

@@ -9,13 +9,18 @@
   },
   "dependencies": {
     "@react-native-community/async-storage": "^1.4.1",
+    "@types/events": "^3.0.0",
+    "@types/react-native-push-notification": "^3.0.5",
     "@types/react-native-sqlite-storage": "^3.3.1",
     "geolib": "^3.0.2",
+    "guid-typescript": "^1.0.9",
+    "moment": "^2.24.0",
     "native-base": "^2.12.1",
     "react": "16.8.6",
     "react-native": "0.59.8",
     "react-native-gesture-handler": "^1.1.0",
     "react-native-maps": "^0.24.2",
+    "react-native-push-notification": "git+https://git@github.com/mmccartney/react-native-push-notification.git",
     "react-native-sqlite-storage": "^3.3.10",
     "react-native-version-number": "^0.3.6",
     "react-navigation": "^3.11.0"
