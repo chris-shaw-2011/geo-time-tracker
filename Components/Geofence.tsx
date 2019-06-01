@@ -8,6 +8,7 @@ import { NavigationScreenProp, NavigationState, NavigationParams } from "react-n
 import GeofenceType from "../Classes/Geofence"
 import { computeDestinationPoint } from "geolib"
 import GlobalSettingsContext from "../Classes/GlobalSettingsContext";
+import Geolocation from '@react-native-community/geolocation';
 
 const styles = StyleSheet.create({
     fill: {
@@ -118,7 +119,11 @@ export default class Geofence extends Page<Props, State> {
 
     componentDidMount() {
         if (!this.state.loaded) {
-            navigator.geolocation.getCurrentPosition(this.positionUpdate)
+            Geolocation.getCurrentPosition(this.positionUpdate, undefined, {
+                timeout: 60000,
+                enableHighAccuracy: true,
+                maximumAge: 0,
+            })
         }
     }
 

@@ -3,6 +3,7 @@ package com.geotimetracker;
 import android.app.Application;
 
 import com.facebook.react.ReactApplication;
+import com.reactnativecommunity.geolocation.GeolocationPackage;
 import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage;
 import com.airbnb.android.react.maps.MapsPackage;
 import com.reactnativecommunity.asyncstorage.AsyncStoragePackage;
@@ -31,6 +32,7 @@ public class MainApplication extends Application implements ReactApplication {
       return Arrays.<ReactPackage>asList(
           new SQLitePluginPackage(),   // register SQLite Plugin here
           new MainReactPackage(),
+            new GeolocationPackage(),
             new ReactNativePushNotificationPackage(),
             new MapsPackage(),
             new AsyncStoragePackage(),

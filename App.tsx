@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-community/async-storage';
 import { AppStatus } from "./Classes/Enumerations";
 import Timecard, { ActiveTimecard } from './Classes/Timecard';
 import PushNotification from "react-native-push-notification"
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
 import moment from "moment"
 import db from "./Classes/Database"
 import GlobalEvents, { Event } from "./Classes/GlobalEvents"
@@ -91,6 +91,14 @@ export default class App extends Component<Props, State> {
 
     async componentDidMount() {
         SQLite.enablePromise(true);
+
+        if(Platform.OS == "android") {
+            var gpsPermission = await PermissionsAndroid.check("android.permission.ACCESS_COARSE_LOCATION")
+
+            while(!gpsPermission) {
+                gpsPermission = await PermissionsAndroid.requestPermission("android.permission.ACCESS_COARSE_LOCATION")
+            }
+        }
 
         await this.loadInitialData()
     }

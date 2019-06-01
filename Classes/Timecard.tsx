@@ -4,6 +4,7 @@ import { ResultSetRowList } from "react-native-sqlite-storage";
 import PushNotification from "react-native-push-notification";
 import moment from "moment";
 import db from "./Database";
+import Geolocation from "@react-native-community/geolocation";
 
 interface TimecardCoordinate {
     coordinate: LatLng,
@@ -11,7 +12,6 @@ interface TimecardCoordinate {
     time: Date,
     id: Guid,
 }
-
 
 var _activeTimecard: ActiveTimecard | undefined;
 
