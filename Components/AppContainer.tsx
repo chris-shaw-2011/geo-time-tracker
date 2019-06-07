@@ -12,6 +12,8 @@ import Settings from './Settings';
 import { AppStatus } from '../Classes/Enumerations';
 import Loading from './Loading';
 import Geofence from "./Geofence"
+import ViewTimecard from './ViewTimecard';
+import Logs from './Logs';
 
 interface Props {
     appStatus: AppStatus,
@@ -19,15 +21,13 @@ interface Props {
 
 interface AppHeaderProps extends HeaderProps {
     allowDrawer?: boolean,
-    title?: string
+    title?: string,
 }
 
 const AppHeader = (props: AppHeaderProps) => (
     <Header androidStatusBarColor={defaultColor} style={styles.header}>
-        <Left>
-            {props.allowDrawer && <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />}
-        </Left>
-        <Body>
+        <Body style={{ flexShrink: 1, flexGrow: 1, display: "flex", flexDirection: "row"  }}>
+        {props.allowDrawer && <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />}
             <Title style={styles.title}>
                 {props.title ?
                     props.title :
@@ -37,7 +37,6 @@ const AppHeader = (props: AppHeaderProps) => (
                 }
             </Title>
         </Body>
-        <Right />
     </Header>
 )
 
@@ -49,10 +48,20 @@ const GeofencesStack = createStackNavigator({
         initialRouteName: "GeofencesList",
     })
 
+const TimecardsStack = createStackNavigator({
+    TimecardList: { screen: Timecards },
+    ViewTimecard: { screen: ViewTimecard },
+},
+    {
+        headerMode: "none",
+        initialRouteName: "TimecardList",
+    })
+
 const Drawer = createDrawerNavigator({
-    Timecards: { screen: Timecards },
+    Timecards: { screen: TimecardsStack },
     Geofences: { screen: GeofencesStack },
     Settings: { screen: Settings },
+    Logs: { screen: Logs },
 },
     {
         contentComponent: props => (

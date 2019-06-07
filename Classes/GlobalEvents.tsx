@@ -1,8 +1,10 @@
-import { EventEmitter, Listener } from "events"
+import { Listener } from "events"
 import { DeviceEventEmitter } from "react-native";
 
 export enum Event {
-    TimeCardUpdate = "TimeCardUpdate",
+    TimecardUpdate = "TimecardUpdate",
+    TimecardCoordinateAdded = "TimecardCoordinateAdded",
+    LogAdded = "LogAdded",
 }
 
 export class GlobalEventListener {

@@ -1,12 +1,12 @@
 import { LatLng } from "react-native-maps";
 import { Guid } from "guid-typescript"
 import { ResultSetRowList } from "react-native-sqlite-storage";
-import PushNotification from "react-native-push-notification";
 import moment from "moment";
 import db from "./Database";
-import Geolocation from "@react-native-community/geolocation";
+import BackgroundGeolocation from "@mauron85/react-native-background-geolocation";
+import GelocationHelpers from "./GeolocationHelpers"
 
-interface TimecardCoordinate {
+export interface TimecardCoordinate {
     coordinate: LatLng,
     accuracy: number,
     time: Date,
@@ -14,6 +14,62 @@ interface TimecardCoordinate {
 }
 
 var _activeTimecard: ActiveTimecard | undefined;
+
+BackgroundGeolocation.configure({
+    desiredAccuracy: BackgroundGeolocation.HIGH_ACCURACY,
+    debug: false,
+    startOnBoot: true,
+    stopOnTerminate: false,
+    locationProvider: BackgroundGeolocation.RAW_PROVIDER,
+    interval: 5 * 60 * 1000,
+    fastestInterval: 5 * 60 * 1000,
+    stopOnStillActivity: false,
+});
+
+BackgroundGeolocation.on('location', (location) => {
+    db.logMessage("Location Updated");
+    if(_activeTimecard) {
+        db.addTimecardCoordinate({
+            id: Guid.create(),
+            coordinate: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+            },
+            accuracy: location.accuracy,
+            time: new Date(location.time),
+        }, _activeTimecard.id)
+    }
+});
+
+BackgroundGeolocation.on('error', (error) => {
+    db.logMessage(`[ERROR] BackgroundGeolocation error: ${error.message}`)
+});
+
+BackgroundGeolocation.on('start', () => {
+    db.logMessage('[INFO] BackgroundGeolocation service has been started');
+});
+
+BackgroundGeolocation.on('stop', () => {
+    db.logMessage('[INFO] BackgroundGeolocation service has been stopped');
+});
+
+BackgroundGeolocation.on('authorization', (status) => {
+    db.logMessage(`[INFO] BackgroundGeolocation authorization status: ${status}`);
+});
+
+BackgroundGeolocation.on('background', () => {
+    db.logMessage('[INFO] App is in background');
+  });
+
+  BackgroundGeolocation.on('foreground', () => {
+    db.logMessage('[INFO] App is in foreground');
+  });
+
+  BackgroundGeolocation.headlessTask((event) => {
+      db.logMessage(`[INFO] Headless task ${event.name}: ${event.params}`)
+
+    return 'Processing event: ' + event.name; // will be logged
+});
 
 export default class Timecard {
     static fromDatabase(rows: ResultSetRowList) {
@@ -33,28 +89,22 @@ export default class Timecard {
 
     static set activeTimecard(activeTimecard: ActiveTimecard | undefined) {
         if (_activeTimecard && (!activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
-            PushNotification.cancelAllLocalNotifications();
+            BackgroundGeolocation.stop();
         }
 
         if (activeTimecard && (!_activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
             const showId = activeTimecard.rowId!.toString()
-            PushNotification.localNotification({
-                ongoing: true,
-                actions: "['Open', 'Clock Out']",
-                title: "Clocked In",
-                message: `Since ${moment(activeTimecard.timeIn).format('MMMM Do YYYY, h:mm a')}`,
-                id: showId,
-                autoCancel: false,
-                priority: "low",
-                urgency: "low",
+            BackgroundGeolocation.configure({
+                notificationTitle: "Clocked In",
+                notificationText: `Since ${moment(activeTimecard.timeIn).format('MMMM Do YYYY, h:mm a')}`,
             })
+            BackgroundGeolocation.start();
         }
 
         _activeTimecard = activeTimecard
     }
 
     constructor(id: Guid, timeIn: Date, timeOut?: Date, originalTimeIn?: Date, originalTimeOut?: Date, description?: string, rowId?: number) {
-
         this.timeIn = timeIn;
         this.id = id;
         this.originalTimeIn = originalTimeIn;
@@ -68,7 +118,6 @@ export default class Timecard {
     public originalTimeIn?: Date
     public timeOut?: Date
     public originalTimeOut?: Date
-    public coordinates: TimecardCoordinate[] = []
     public description: string
     public id: Guid
     public rowId?: number
@@ -104,11 +153,23 @@ export default class Timecard {
 }
 
 export class ActiveTimecard extends Timecard {
-    constructor(t:Timecard) {
+    constructor(t: Timecard) {
         super(t.id, t.timeIn, t.timeOut, t.originalTimeIn, t.originalTimeOut, t.description, t.rowId)
     }
 
-    public clockOut() {
-        db.updateTimecard(new Timecard(this.id, this.timeIn, new Date(), this.originalTimeIn, this.originalTimeOut, this.description, this.rowId))
+    public async clockOut() {
+        const pos = await GelocationHelpers.getCurrentPosition();
+        const dt = new Date(pos.timestamp);
+
+        await db.updateTimecard(new Timecard(this.id, this.timeIn, dt, this.originalTimeIn, this.originalTimeOut, this.description, this.rowId))
+        await db.addTimecardCoordinate({
+            id: Guid.create(),
+            coordinate: {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+            },
+            accuracy: pos.coords.accuracy,
+            time: dt,
+        }, this.id)
     }
 }

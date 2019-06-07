@@ -17,9 +17,12 @@ const styles = StyleSheet.create({
     },
     header: {
         backgroundColor: defaultColor,
+        display: "flex",
+        flexDirection: "row"
     },
     menu: {
         color: textColor,
+        paddingRight: 20,
     },
     loadingView: {
         flex: 1,

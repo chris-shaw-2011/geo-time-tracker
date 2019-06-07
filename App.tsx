@@ -9,9 +9,7 @@ import { AppStatus } from "./Classes/Enumerations";
 import Timecard, { ActiveTimecard } from './Classes/Timecard';
 import PushNotification from "react-native-push-notification"
 import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
-import moment from "moment"
 import db from "./Classes/Database"
-import GlobalEvents, { Event } from "./Classes/GlobalEvents"
 
 PushNotification.configure({
 

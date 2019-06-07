@@ -1,5 +1,5 @@
-import React, { Fragment } from "react"
-import { Text, Container, Content, Button, ListItem, Left, Right, Icon } from "native-base";
+import React from "react"
+import { Text, Button, ListItem, Left, Right, Icon } from "native-base";
 import { Page } from "./Page";
 import styles from "../Classes/Styles";
 import { NavigationScreenProp, NavigationState, NavigationParams, SectionList } from "react-navigation";
@@ -9,7 +9,8 @@ import { Guid } from "guid-typescript";
 import db from "../Classes/Database"
 import Loading from "./Loading";
 import GlobalEvents, { Event, GlobalEventListener } from "../Classes/GlobalEvents"
-import { View, StyleSheet } from "react-native";
+import { View, SectionListRenderItemInfo } from "react-native";
+import GeolocationHelpers from "../Classes/GeolocationHelpers"
 
 interface Props {
     navigation: NavigationScreenProp<NavigationState, NavigationParams>
@@ -19,6 +20,8 @@ interface State {
     sections: Section[],
     loading: boolean,
     lastUpdate: Date,
+    clockingIn: boolean,
+    clockingOut: boolean,
 }
 
 interface Section {
@@ -44,13 +47,15 @@ export default class Timecards extends Page<Props, State> {
             loading: true,
             sections: [],
             lastUpdate: new Date(),
+            clockingIn: false,
+            clockingOut: false,
         }
     }
 
     async componentDidMount() {
         await this.loadFromDatabase();
 
-        this.updateTimeListener = GlobalEvents.addListener(Event.TimeCardUpdate, this.loadFromDatabase)
+        this.updateTimeListener = GlobalEvents.addListener(Event.TimecardUpdate, this.loadFromDatabase)
 
         this.updateInterval = setInterval(this.updateTime, 36000);
     }
@@ -69,16 +74,35 @@ export default class Timecards extends Page<Props, State> {
         })
     }
 
-    clockIn() {
-        db.updateTimecard(new Timecard(Guid.create(), new Date()))
+    async clockIn() {
+        this.setState({
+            clockingIn: true,
+        })
+
+        const id = Guid.create();
+        const location = await GeolocationHelpers.getCurrentPosition();
+
+        await db.updateTimecard(new Timecard(id, new Date()))
+
+        this.setState({
+            clockingIn: false,
+        })
     }
 
-    clockOut() {
-        Timecard.activeTimecard!.clockOut()
+    async clockOut() {
+        this.setState({
+            clockingOut: true,
+        })
+
+        await Timecard.activeTimecard!.clockOut()
+
+        this.setState({
+            clockingOut: false,
+        })
     }
 
     timeSelected(timecard: Timecard) {
-
+        this.props.navigation.navigate("ViewTimecard", { timecard: timecard })
     }
 
     millisecondsToHours(milliseconds: number) {
@@ -131,7 +155,7 @@ export default class Timecards extends Page<Props, State> {
                         const data = section.data as Timecard[]
 
                         return (
-                            <View style={{backgroundColor: "grey", alignItems: "center"}}>
+                            <View style={{ backgroundColor: "grey", alignItems: "center" }}>
                                 <Text style={{ fontWeight: 'bold' }}>{section.title}</Text>
                                 <Text>
                                     {this.millisecondsToHours(data.reduce((total, t) => {
@@ -141,8 +165,8 @@ export default class Timecards extends Page<Props, State> {
                             </View>
                         )
                     }}
-                    renderItem={(args) => {
-                        const item: Timecard = args.item
+                    renderItem={(args:SectionListRenderItemInfo<Timecard>) => {
+                        const item = args.item
                         return (
                             <ListItem onPress={() => this.timeSelected(item)}>
                                 <Left>
@@ -162,11 +186,11 @@ export default class Timecards extends Page<Props, State> {
                         )
                     }} />
                 {!Timecard.activeTimecard ?
-                    <Button full primary light style={styles.button} onPress={this.clockIn}>
-                        <Text style={styles.buttonText}>Clock In</Text>
+                    <Button full primary light style={styles.button} onPress={this.clockIn} disabled={this.state.clockingIn}>
+                        <Text style={styles.buttonText}>{this.state.clockingIn ? "Clocking In..." : "Clock In"}</Text>
                     </Button> :
-                    <Button full primary light style={styles.button} onPress={this.clockOut}>
-                        <Text style={styles.buttonText}>Clock Out</Text>
+                    <Button full primary light style={styles.button} onPress={this.clockOut} disabled={this.state.clockingOut}>
+                        <Text style={styles.buttonText}>{this.state.clockingOut ? "Clocking Out..." : "Clock Out"}</Text>
                     </Button>}
             </View>
         )

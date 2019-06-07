@@ -1,7 +1,7 @@
 import SQLite from 'react-native-sqlite-storage'
 import GlobalEvents, { Event } from "./GlobalEvents";
-import Timecard, { ActiveTimecard } from './Timecard';
-import PushNotification from 'react-native-push-notification';
+import Timecard, { ActiveTimecard, TimecardCoordinate } from './Timecard';
+import { Guid } from 'guid-typescript';
 
 SQLite.enablePromise(true);
 
@@ -18,6 +18,7 @@ class Database implements SQLite.SQLiteDatabase {
             await db.executeSql("CREATE TABLE IF NOT EXISTS geofence (name TEXT PRIMARY KEY, latitude FLOAT, longitude FLOAT, radius FLOAT)")
             await db.executeSql("CREATE TABLE IF NOT EXISTS timecard (id TEXT PRIMARY KEY, timeIn BIGINT, originalTimeIn BIGINT, timeOut BIGINT, originalTimeOut BIGINT, description TEXT)");
             await db.executeSql("CREATE TABLE IF NOT EXISTS timecardCoordinate (id TEXT PRIMARY KEY, timecardId TEXT, latitude FLOAT, longitude FLOAT, accuracy FLOAT, time BIGINT, FOREIGN KEY(timecardId) REFERENCES timecard(id))")
+            await db.executeSql("CREATE TABLE IF NOT EXISTS log (message TEXT, time BIGINT)")
 
             const version = (await db.executeSql("PRAGMA user_version"))[0].rows.item(0).user_version as Number;
 
@@ -114,7 +115,19 @@ class Database implements SQLite.SQLiteDatabase {
             Timecard.activeTimecard = undefined;
         }
 
-        GlobalEvents.emit(Event.TimeCardUpdate)
+        GlobalEvents.emit(Event.TimecardUpdate)
+    }
+
+    public async addTimecardCoordinate(coordinate: TimecardCoordinate, timecardId: Guid) {
+        await db.executeSql("INSERT INTO timecardCoordinate (id, timecardId, latitude, longitude, accuracy, time) VALUES(?, ?, ?, ?, ?, ?)", [coordinate.id.toString(), timecardId.toString(), coordinate.coordinate.latitude, coordinate.coordinate.longitude, coordinate.accuracy, coordinate.time.getTime() / 1000])
+
+        GlobalEvents.emit(Event.TimecardCoordinateAdded);
+    }
+
+    public async logMessage(message: String) {
+        await db.executeSql("INSERT INTO log (message, time) VALUES (?, ?)", [message, new Date().getTime() / 1000])
+
+        GlobalEvents.emit(Event.LogAdded)
     }
 }
 
