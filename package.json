@@ -9,11 +9,8 @@
   },
   "dependencies": {
     "@mauron85/react-native-background-geolocation": "^0.5.3",
-    "@react-native-community/async-storage": "^1.4.2",
+    "@react-native-community/async-storage": "^1.5.0",
     "@react-native-community/geolocation": "^1.4.2",
-    "@types/events": "^3.0.0",
-    "@types/react-native-push-notification": "^3.0.5",
-    "@types/react-native-sqlite-storage": "^3.3.1",
     "geolib": "^3.0.3",
     "guid-typescript": "^1.0.9",
     "moment": "^2.24.0",
@@ -31,16 +28,19 @@
     "@babel/core": "^7.4.5",
     "@babel/runtime": "^7.4.5",
     "@react-native-community/eslint-config": "^0.0.5",
-    "@types/jest": "^24.0.13",
-    "@types/react": "^16.8.19",
-    "@types/react-native": "^0.57.60",
-    "@types/react-test-renderer": "^16.8.1",
+    "@types/jest": "^24.0.15",
+    "@types/react": "^16.8.20",
+    "@types/react-native": "^0.57.63",
+    "@types/react-test-renderer": "^16.8.2",
+    "@types/events": "^3.0.0",
+    "@types/react-native-push-notification": "^3.0.5",
+    "@types/react-native-sqlite-storage": "^3.3.1",
     "babel-jest": "^24.8.0",
     "eslint": "^5.16.0",
     "jest": "^24.8.0",
     "metro-react-native-babel-preset": "^0.54.1",
     "react-test-renderer": "16.8.6",
-    "typescript": "^3.5.1"
+    "typescript": "^3.5.2"
   },
   "jest": {
     "preset": "react-native"
