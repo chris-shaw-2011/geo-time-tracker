@@ -1,8 +1,8 @@
 import React, { Fragment } from "react"
 import { Page } from "./Page";
-import MapView, { Marker, MapEvent, Region, Circle } from 'react-native-maps';
+import MapView, { MapEvent, Region, LatLng } from 'react-native-maps';
 import { StyleSheet, GeolocationReturnType, Alert } from "react-native";
-import { View, Input, Form, Item, Label, Button, Text } from "native-base";
+import { View, Input, Form, Item, Label, Button, Text, Icon } from "native-base";
 import Loading from "./Loading";
 import { NavigationScreenProp, NavigationState, NavigationParams } from "react-navigation";
 import GeofenceType from "../Classes/Geofence"
@@ -46,7 +46,17 @@ const styles = StyleSheet.create({
         width: "100%",
         display: "flex",
         justifyContent: "space-around",
-        flexDirection: "row"
+        flexDirection: "row",
+        zIndex: 50,
+    },
+    caretViewRow: {
+        display: "flex",
+        flexDirection: "row",
+        justifyContent: "center",
+    },
+    caret: {
+        fontSize: 35,
+        width: 35,
     },
     buttonText: {
         fontWeight: "bold",
@@ -68,8 +78,16 @@ interface State {
     updatedGeofence: GeofenceType
 }
 
+enum MoveDirection {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
 export default class Geofence extends Page<Props, State> {
     title = "Geofence"
+    map: MapView | null = null;
 
     constructor(props: Props) {
         super(props)
@@ -81,6 +99,7 @@ export default class Geofence extends Page<Props, State> {
         this.nameChanged = this.nameChanged.bind(this);
         this.delete = this.delete.bind(this);
         this.deleteConfirm = this.deleteConfirm.bind(this);
+        this.move = this.move.bind(this);
 
         var geofence = (props.navigation.getParam("geofence") as GeofenceType | undefined || new GeofenceType())
         var deltas = this.computeDeltas(geofence);
@@ -121,7 +140,7 @@ export default class Geofence extends Page<Props, State> {
     async componentDidMount() {
         if (!this.state.loaded) {
             const pos = await GeolocationHelpers.getCurrentPosition();
-            
+
             this.positionUpdate(pos);
         }
     }
@@ -149,11 +168,7 @@ export default class Geofence extends Page<Props, State> {
     }
 
     radiusChanged(radius: string) {
-        var newRadius = parseInt(radius);
-
-        this.setState(oldState => ({
-            updatedGeofence: new GeofenceType(oldState.updatedGeofence.name, oldState.updatedGeofence.coords, newRadius && newRadius >= 0 ? newRadius : 0)
-        }))
+        this.setState(oldState => this.updateGeofenceAndCenter(oldState, undefined, parseInt(radius)))
     }
 
     nameChanged(name: string) {
@@ -174,6 +189,56 @@ export default class Geofence extends Page<Props, State> {
             this.setState({
                 nameError: true,
             })
+        }
+    }
+
+    async move(direction: MoveDirection) {
+        const bounds = await this.map!.getMapBoundaries();
+        var updateCoord = this.state.updatedGeofence.coords;
+        const latDelta = bounds.northEast.latitude > bounds.southWest.latitude ? bounds.northEast.latitude - bounds.southWest.latitude : bounds.southWest.latitude - bounds.northEast.latitude;
+        const lngDelta = bounds.northEast.longitude > bounds.southWest.longitude ? bounds.northEast.longitude - bounds.southWest.longitude : bounds.southWest.longitude - bounds.northEast.longitude;
+
+        switch (direction) {
+            case MoveDirection.Up:
+                updateCoord = {
+                    latitude: updateCoord.latitude + (latDelta / 100),
+                    longitude: updateCoord.longitude,
+                };
+                break;
+            case MoveDirection.Down:
+                updateCoord = {
+                    latitude: updateCoord.latitude - (latDelta / 100),
+                    longitude: updateCoord.longitude,
+                };
+                break;
+            case MoveDirection.Left:
+                updateCoord = {
+                    latitude: updateCoord.latitude,
+                    longitude: updateCoord.longitude - (lngDelta / 100),
+                };
+                break;
+            case MoveDirection.Right:
+                updateCoord = {
+                    latitude: updateCoord.latitude,
+                    longitude: updateCoord.longitude + (lngDelta / 100),
+                };
+                break;
+        }
+
+        this.setState(oldState => this.updateGeofenceAndCenter(oldState, updateCoord))
+    }
+
+    updateGeofenceAndCenter(oldState: Readonly<State>, coords?: LatLng, radius?: number) {
+        const geofence = new GeofenceType(oldState.updatedGeofence.name, coords || oldState.updatedGeofence.coords, radius && radius >= 0 ? radius : oldState.updatedGeofence.radius);
+        const deltas = this.computeDeltas(geofence);
+
+        this.map!.animateToRegion({
+            ...oldState.updatedGeofence.coords,
+            ...deltas,
+        })
+
+        return {
+            updatedGeofence: geofence,
         }
     }
 
@@ -210,6 +275,7 @@ export default class Geofence extends Page<Props, State> {
                         initialRegion={this.state.initialRegion}
                         mapType="satellite"
                         onPress={this.onTap}
+                        ref={ref => this.map = ref}
                     >
                         <GlobalSettingsContext.Consumer>
                             {value =>
@@ -227,17 +293,40 @@ export default class Geofence extends Page<Props, State> {
                             <Label>Name</Label>
                             <Input style={styles.input} value={this.state.updatedGeofence.name} onChangeText={this.nameChanged} />
                         </Item>
-                        <Item style={styles.radius} stackedLabel>
-                            <Label>Radius</Label>
-                            <Input style={styles.input} keyboardType="number-pad" value={this.state.updatedGeofence.radius ? this.state.updatedGeofence.radius.toString() : ""} onChangeText={this.radiusChanged} />
-                        </Item>
+                        <View style={{ display: "flex", flexDirection: "row" }}>
+                            <Item style={styles.radius} stackedLabel>
+                                <Label>Radius</Label>
+                                <Input style={styles.input} keyboardType="number-pad" value={this.state.updatedGeofence.radius ? this.state.updatedGeofence.radius.toString() : ""} onChangeText={this.radiusChanged} />
+                            </Item>
+                            <View style={{ height: "100%", display: "flex", justifyContent: "space-between", paddingLeft: 10 }}>
+                                <Icon name="plussquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.radiusChanged((this.state.updatedGeofence.radius + 1).toString())} />
+                                <Icon name="minussquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.radiusChanged((this.state.updatedGeofence.radius - 1).toString())} />
+                            </View>
+                        </View>
                     </View>
                 </Form>
                 <View style={styles.buttonView}>
-                    <Button light onPress={this.save}>
+                    <Button light onPress={this.save} style={{alignSelf: "flex-end"}}>
                         <Text style={styles.buttonText}>Save</Text>
                     </Button>
-                    {this.state.initialGeofence && <Button danger onPress={this.deleteConfirm}>
+                    <View>
+                        <View style={styles.caretViewRow}>
+                            <View style={styles.caret} />
+                            <Icon name="upsquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.move(MoveDirection.Up)} />
+                            <View style={styles.caret} />
+                        </View>
+                        <View style={styles.caretViewRow}>
+                            <Icon name="leftsquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.move(MoveDirection.Left)} />
+                            <View style={styles.caret} />
+                            <Icon name="rightsquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.move(MoveDirection.Right)} />
+                        </View>
+                        <View style={styles.caretViewRow}>
+                            <View style={styles.caret} />
+                            <Icon name="downsquare" type="AntDesign" style={{ ...styles.caret, backgroundColor: "white" }} onPress={() => this.move(MoveDirection.Down)} />
+                            <View style={styles.caret} />
+                        </View>
+                    </View>
+                    {this.state.initialGeofence && <Button danger onPress={this.deleteConfirm} style={{alignSelf: "flex-end"}}>
                         <Text style={styles.buttonText}>Delete</Text>
                     </Button>}
                 </View>

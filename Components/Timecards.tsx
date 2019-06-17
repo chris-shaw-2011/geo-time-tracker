@@ -155,7 +155,7 @@ export default class Timecards extends Page<Props, State> {
                         const data = section.data as Timecard[]
 
                         return (
-                            <View style={{ backgroundColor: "grey", alignItems: "center" }}>
+                            <View style={{ backgroundColor: "lightgrey", alignItems: "center" }}>
                                 <Text style={{ fontWeight: 'bold' }}>{section.title}</Text>
                                 <Text>
                                     {this.millisecondsToHours(data.reduce((total, t) => {
@@ -165,7 +165,7 @@ export default class Timecards extends Page<Props, State> {
                             </View>
                         )
                     }}
-                    renderItem={(args:SectionListRenderItemInfo<Timecard>) => {
+                    renderItem={(args: SectionListRenderItemInfo<Timecard>) => {
                         const item = args.item
                         return (
                             <ListItem onPress={() => this.timeSelected(item)}>
