@@ -3,7 +3,6 @@ import { Guid } from "guid-typescript"
 import { ResultSetRowList } from "react-native-sqlite-storage";
 import moment from "moment";
 import db from "./Database";
-import BackgroundGeolocation from "@mauron85/react-native-background-geolocation";
 import GelocationHelpers from "./GeolocationHelpers"
 
 export interface TimecardCoordinate {
@@ -15,7 +14,7 @@ export interface TimecardCoordinate {
 
 var _activeTimecard: ActiveTimecard | undefined;
 
-BackgroundGeolocation.configure({
+/*BackgroundGeolocation.configure({
     desiredAccuracy: BackgroundGeolocation.HIGH_ACCURACY,
     debug: false,
     startOnBoot: true,
@@ -69,7 +68,7 @@ BackgroundGeolocation.on('background', () => {
       db.logMessage(`[INFO] Headless task ${event.name}: ${event.params}`)
 
     return 'Processing event: ' + event.name; // will be logged
-});
+});*/
 
 export default class Timecard {
     static fromDatabase(rows: ResultSetRowList) {
@@ -79,7 +78,6 @@ export default class Timecard {
             const item = rows.item(i);
             timecards.push(new Timecard(item.id, new Date(item.timeIn * 1000), item.timeOut ? new Date(item.timeOut * 1000) : undefined, item.originalTimeIn ? new Date(item.originalTimeIn * 1000) : undefined, item.originalTimeOut ? new Date(item.originalTimeOut * 1000) : undefined, item.description, item.rowid));
         }
-
         return timecards;
     }
 
@@ -89,16 +87,16 @@ export default class Timecard {
 
     static set activeTimecard(activeTimecard: ActiveTimecard | undefined) {
         if (_activeTimecard && (!activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
-            BackgroundGeolocation.stop();
+            //BackgroundGeolocation.stop();
         }
 
         if (activeTimecard && (!_activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
             const showId = activeTimecard.rowId!.toString()
-            BackgroundGeolocation.configure({
+            /*BackgroundGeolocation.configure({
                 notificationTitle: "Clocked In",
                 notificationText: `Since ${moment(activeTimecard.timeIn).format('MMMM Do YYYY, h:mm a')}`,
             })
-            BackgroundGeolocation.start();
+            BackgroundGeolocation.start();*/
         }
 
         _activeTimecard = activeTimecard

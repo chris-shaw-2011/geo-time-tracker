@@ -21,9 +21,9 @@ PushNotification.configure({
     // (required) Called when a remote or local notification is opened or received
     onNotification: function (notification) {
 
-        if(notification.action == "Clock Out") {
+        /*if(notification.action == "Clock Out") {
             Timecard.activeTimecard!.clockOut()
-        }
+        }*/
 
         // process the notification
 
