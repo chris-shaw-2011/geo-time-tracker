@@ -1,17 +1,18 @@
 import React, { Fragment } from "react"
 import { Page } from "./Page";
-import Timecard, { TimecardCoordinate } from "../Classes/Timecard";
+import Timecard, { TimecardEvent } from "../Classes/Timecard";
 import moment from "moment";
 import db from "../Classes/Database";
 import { Guid } from "guid-typescript";
 import Loading from "./Loading";
 import { View, ListItem, Text } from "native-base";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Circle, Polygon, LatLng, Polyline } from "react-native-maps";
 import GlobalSettingsContext from "../Classes/GlobalSettingsContext";
 import MapGeofence from "./MapGeofence";
-import { StyleSheet, FlatList } from "react-native";
+import { StyleSheet } from "react-native";
 import { NavigationScreenProp, NavigationState, NavigationParams } from "react-navigation";
 import GlobalEvents, { GlobalEventListener, Event } from "../Classes/GlobalEvents";
+import DateSectionList from "./DateSectionList";
 
 const styles = StyleSheet.create({
     fill: {
@@ -67,8 +68,9 @@ interface Props {
 
 interface State {
     timecard: Timecard,
-    coordinates: TimecardCoordinate[],
+    events: TimecardEvent[],
     loading: boolean,
+    selectedEventId?: Guid,
 }
 
 export default class ViewTimecard extends Page<Props, State> {
@@ -76,6 +78,7 @@ export default class ViewTimecard extends Page<Props, State> {
     title = "";
     updateTimecardCoordinatesListener?: GlobalEventListener
     updateTimecardListener?: GlobalEventListener
+    hasScrolled = false
 
     constructor(props: Props) {
         super(props)
@@ -84,7 +87,7 @@ export default class ViewTimecard extends Page<Props, State> {
 
         this.state = {
             timecard: timecard,
-            coordinates: new Array<TimecardCoordinate>(),
+            events: new Array<TimecardEvent>(),
             loading: true,
         }
         this.updateTimecard = this.updateTimecard.bind(this);
@@ -109,19 +112,20 @@ export default class ViewTimecard extends Page<Props, State> {
 
     async updateTimecard() {
         var timecard = Timecard.fromDatabase((await db.executeSql("SELECT *, rowid from timecard where id = ?", [this.state.timecard.id.toString()]))[0].rows).pop()!;
-        var rows = (await db.executeSql("SELECT id, latitude, longitude, accuracy, time FROM timecardCoordinate WHERE timecardId = ? ORDER BY time DESC", [timecard.id]))[0].rows;
-        var coordinates = new Array<TimecardCoordinate>();
+        var rows = (await db.executeSql("SELECT id, latitude, longitude, accuracy, time, message FROM timecardEvent WHERE timecardId = ? ORDER BY time DESC", [timecard.id]))[0].rows;
+        var events = new Array<TimecardEvent>();
 
         for (var i = 0; i < rows.length; ++i) {
             const row = rows.item(i);
-            coordinates.push({
+            events.push({
                 id: Guid.parse(row.id),
-                coordinate: {
+                coordinate: row.latitude && row.longitude ? {
                     latitude: row.latitude,
                     longitude: row.longitude,
-                },
+                } : undefined,
                 accuracy: row.accuracy,
                 time: new Date(row.time * 1000),
+                message: row.message,
             })
         }
 
@@ -129,20 +133,20 @@ export default class ViewTimecard extends Page<Props, State> {
 
         this.setState({
             timecard: timecard,
-            coordinates: coordinates,
+            events: events,
             loading: false,
         })
     }
 
     updateTitle(timecard: Timecard) {
-        var newTitle = moment(timecard.timeIn).format("M/D/YY hh:mm a") + " - ";
+        var newTitle = moment(timecard.timeIn).format("M/D/YY h:mm a") + " - ";
 
         if (timecard.timeOut) {
             if (moment(timecard.timeIn).format("M/D/YY") == moment(timecard.timeOut).format("M/D/YY")) {
-                newTitle += moment(timecard.timeOut).format("hh:mm a")
+                newTitle += moment(timecard.timeOut).format("h:mm a")
             }
             else {
-                newTitle += moment(timecard.timeOut).format("M/D/YY hh:mm a");
+                newTitle += moment(timecard.timeOut).format("M/D/YY h:mm a");
             }
         }
         else {
@@ -153,10 +157,47 @@ export default class ViewTimecard extends Page<Props, State> {
         this.context.setTitle(newTitle);
     }
 
+    eventPressed(event: TimecardEvent) {
+        if (this.map && event.coordinate) {
+            this.setState({
+                selectedEventId: event.id,
+            })
+            this.map.fitToCoordinates(event.accuracy ? this.get4PointsAroundCircumference(event.coordinate, event.accuracy) : [event.coordinate], { animated: true })
+        }
+    }
+
+    get4PointsAroundCircumference(latLng: LatLng, radius: number): LatLng[] {
+        const earthRadius = 6378.1 * 1000;
+        const lat0 = latLng.latitude + (-radius / earthRadius) * (180 / Math.PI)
+        const lat1 = latLng.latitude + (radius / earthRadius) * (180 / Math.PI)
+        const lng0 = latLng.longitude + (-radius / earthRadius) * (180 / Math.PI) / Math.cos(latLng.latitude * Math.PI / 180);
+        const lng1 = latLng.longitude + (radius / earthRadius) * (180 / Math.PI) / Math.cos(latLng.latitude * Math.PI / 180);
+
+        return [{
+            latitude: lat0,
+            longitude: latLng.longitude
+        }, //bottom
+        {
+            latitude: latLng.latitude,
+            longitude: lng0
+        }, //left
+        {
+            latitude: lat1,
+            longitude: latLng.longitude
+        }, //top
+        {
+            latitude: latLng.latitude,
+            longitude: lng1
+        } //right
+        ]
+    }
+
     render() {
         if (this.state.loading) {
             return <Loading />
         }
+
+        const eventsWithCoords = this.state.events.filter(t => t.coordinate != undefined);
 
         return (
             <View style={styles.fill}>
@@ -164,7 +205,7 @@ export default class ViewTimecard extends Page<Props, State> {
                     style={{ height: "100%", flexGrow: 1, flexShrink: 1 }}
                     ref={ref => this.map = ref}
                     mapType="satellite"
-                    onMapReady={() => this.map && this.map.fitToCoordinates(this.state.coordinates.map(t => t.coordinate))}
+                    onMapReady={() => this.map && this.map.fitToCoordinates(eventsWithCoords.map(t => t.coordinate!))}
                 >
                     <GlobalSettingsContext.Consumer>
                         {value =>
@@ -173,15 +214,34 @@ export default class ViewTimecard extends Page<Props, State> {
                             </Fragment>
                         }
                     </GlobalSettingsContext.Consumer>
-                    {this.state.coordinates.map(c => <Marker coordinate={c.coordinate} title={moment(c.time).format("MMMM Do YYYY hh:mm a")} pinColor="blue" key={c.id.toString()} />)}
-                </MapView>
-                <FlatList style={{ height: 150 }} data={this.state.coordinates} keyExtractor={(item) => item.id.toString()} renderItem={({ item }) => (
-                    <ListItem onPress={() => this.map && this.map.fitToCoordinates([item.coordinate], {animated: true})}>
-                        <Text>{moment(item.time).format("MMMM Do YYYY hh:mm a")}</Text>
-                    </ListItem>
-                )} />
-            </View>
+                    {eventsWithCoords.map((e, index) => {
+                        const selected = e.id == this.state.selectedEventId
+                        const nextSelected = index + 1 != eventsWithCoords.length && eventsWithCoords[index + 1].id == this.state.selectedEventId;
+                        var lineCoordinates: LatLng[] = []
 
+                        lineCoordinates.push(e.coordinate!)
+
+                        if (index + 1 != eventsWithCoords.length) {
+                            lineCoordinates.push(eventsWithCoords[index + 1].coordinate!)
+                        }
+
+                        return (
+                            <Fragment key={`${e.id.toString()}${selected ? "selected" : ""}`}>
+                                {lineCoordinates.length > 1 && <Polyline coordinates={lineCoordinates} strokeColor={selected || nextSelected ? "red" : "blue"} strokeWidth={selected || nextSelected ? 6 : 2} />}
+                                <Marker coordinate={e.coordinate!} title={moment(e.time).format("MMMM Do YYYY h:mm a")} pinColor={selected ? "red" : "blue"} onPress={() => this.eventPressed(e)} />
+                                {e.accuracy && selected && <Circle center={e.coordinate!} radius={e.accuracy} fillColor="rgba(255, 0, 0, .25)" strokeColor="red" />}
+                            </Fragment>
+                        )
+                    })}
+                </MapView>
+                <DateSectionList style={{ height: 200 }} items={this.state.events} keyExtractor={i => i.id ? i.id.toString() : ""} getItemDate={i => i.time} onViewableItemsChanged={e => this.hasScrolled && e.viewableItems[0].item.coordinate && this.eventPressed(e.viewableItems[0].item as TimecardEvent)} viewabilityConfig={{ itemVisiblePercentThreshold: 15 }} onScroll={() => this.hasScrolled = true}
+                    renderItem={({ item }) => (
+                        <ListItem onPress={(e) => this.eventPressed(item)}>
+                            <Text>{`${moment(item.time).format("h:mm a")} ${item.message ? `- ${item.message}` : ""}`}</Text>
+                        </ListItem>
+                    )}
+                />
+            </View>
         )
     }
 }

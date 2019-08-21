@@ -306,7 +306,7 @@ export default class Geofence extends Page<Props, State> {
                     </View>
                 </Form>
                 <View style={styles.buttonView}>
-                    <Button light onPress={this.save} style={{alignSelf: "flex-end"}}>
+                    <Button light onPress={this.save} style={{ alignSelf: "flex-end" }}>
                         <Text style={styles.buttonText}>Save</Text>
                     </Button>
                     <View>
@@ -326,7 +326,7 @@ export default class Geofence extends Page<Props, State> {
                             <View style={styles.caret} />
                         </View>
                     </View>
-                    {this.state.initialGeofence && <Button danger onPress={this.deleteConfirm} style={{alignSelf: "flex-end"}}>
+                    {this.state.initialGeofence && <Button danger onPress={this.deleteConfirm} style={{ alignSelf: "flex-end" }}>
                         <Text style={styles.buttonText}>Delete</Text>
                     </Button>}
                 </View>

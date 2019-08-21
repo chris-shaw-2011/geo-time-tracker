@@ -8,10 +8,10 @@ export enum Event {
 }
 
 export class GlobalEventListener {
-    private _event:Event;
-    private _listener:Listener
+    private _event: Event;
+    private _listener: Listener
 
-    constructor(event:Event, listener:Listener) {
+    constructor(event: Event, listener: Listener) {
         this._event = event;
         this._listener = listener
     }
@@ -22,7 +22,7 @@ export class GlobalEventListener {
 }
 
 class GlobalEvents {
-    static addListener(event:Event, listener:Listener) {
+    static addListener(event: Event, listener: Listener) {
         const call = (...args: any[]) => listener(...args)
 
         DeviceEventEmitter.addListener(event, call)
@@ -30,7 +30,7 @@ class GlobalEvents {
         return new GlobalEventListener(event, call);
     }
 
-    static emit(event:Event, ...args: any[]) {
+    static emit(event: Event, ...args: any[]) {
         return DeviceEventEmitter.emit(event, args)
     }
 }

@@ -1,6 +1,6 @@
 import SQLite from 'react-native-sqlite-storage'
 import GlobalEvents, { Event } from "./GlobalEvents";
-import Timecard, { ActiveTimecard, TimecardCoordinate } from './Timecard';
+import Timecard, { ActiveTimecard, TimecardEvent } from './Timecard';
 import { Guid } from 'guid-typescript';
 
 SQLite.enablePromise(true);
@@ -17,8 +17,8 @@ class Database implements SQLite.SQLiteDatabase {
 
             await db.executeSql("CREATE TABLE IF NOT EXISTS geofence (name TEXT PRIMARY KEY, latitude FLOAT, longitude FLOAT, radius FLOAT)")
             await db.executeSql("CREATE TABLE IF NOT EXISTS timecard (id TEXT PRIMARY KEY, timeIn BIGINT, originalTimeIn BIGINT, timeOut BIGINT, originalTimeOut BIGINT, description TEXT)");
-            await db.executeSql("CREATE TABLE IF NOT EXISTS timecardCoordinate (id TEXT PRIMARY KEY, timecardId TEXT, latitude FLOAT, longitude FLOAT, accuracy FLOAT, time BIGINT, FOREIGN KEY(timecardId) REFERENCES timecard(id))")
-            await db.executeSql("CREATE TABLE IF NOT EXISTS log (message TEXT, time BIGINT)")
+            await db.executeSql("CREATE TABLE IF NOT EXISTS timecardEvent (id TEXT PRIMARY KEY, timecardId TEXT, latitude FLOAT, longitude FLOAT, accuracy FLOAT, time BIGINT, message TEXT, FOREIGN KEY(timecardId) REFERENCES timecard(id))")
+            await db.executeSql("CREATE TABLE IF NOT EXISTS log (message TEXT, data TEXT, time BIGINT)")
 
             const version = (await db.executeSql("PRAGMA user_version"))[0].rows.item(0).user_version as Number;
 
@@ -111,21 +111,21 @@ class Database implements SQLite.SQLiteDatabase {
             const activeTimecard = Timecard.fromDatabase((await db.executeSql("SELECT *, rowid from timecard where id = ?", [id.toString()]))[0].rows).pop();
             Timecard.activeTimecard = activeTimecard ? new ActiveTimecard(activeTimecard) : undefined;
         }
-        else if(timeOutTimestamp && Timecard.activeTimecard && Timecard.activeTimecard.id.toString() == id.toString()) {
+        else if (timeOutTimestamp && Timecard.activeTimecard && Timecard.activeTimecard.id.toString() == id.toString()) {
             Timecard.activeTimecard = undefined;
         }
 
         GlobalEvents.emit(Event.TimecardUpdate)
     }
 
-    public async addTimecardCoordinate(coordinate: TimecardCoordinate, timecardId: Guid) {
-        await db.executeSql("INSERT INTO timecardCoordinate (id, timecardId, latitude, longitude, accuracy, time) VALUES(?, ?, ?, ?, ?, ?)", [coordinate.id.toString(), timecardId.toString(), coordinate.coordinate.latitude, coordinate.coordinate.longitude, coordinate.accuracy, coordinate.time.getTime() / 1000])
+    public async addTimecardCoordinate(event: TimecardEvent, timecardId: Guid) {
+        await db.executeSql("INSERT INTO timecardEvent (id, timecardId, latitude, longitude, accuracy, time, message) VALUES(?, ?, ?, ?, ?, ?, ?)", [event.id.toString(), timecardId.toString(), event.coordinate ? event.coordinate.latitude : null, event.coordinate ? event.coordinate.longitude : null, event.accuracy, event.time.getTime() / 1000, event.message])
 
         GlobalEvents.emit(Event.TimecardCoordinateAdded);
     }
 
-    public async logMessage(message: String) {
-        await db.executeSql("INSERT INTO log (message, time) VALUES (?, ?)", [message, new Date().getTime() / 1000])
+    public async logMessage(message: String, data?: object) {
+        await db.executeSql("INSERT INTO log (message, data, time) VALUES (?, ?, ?)", [message, data ? JSON.stringify(data, undefined, 3) : null, new Date().getTime() / 1000])
 
         GlobalEvents.emit(Event.LogAdded)
     }

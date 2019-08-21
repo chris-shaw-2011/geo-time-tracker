@@ -26,8 +26,8 @@ interface AppHeaderProps extends HeaderProps {
 
 const AppHeader = (props: AppHeaderProps) => (
     <Header androidStatusBarColor={defaultColor} style={styles.header}>
-        <Body style={{ flexShrink: 1, flexGrow: 1, display: "flex", flexDirection: "row"  }}>
-        {props.allowDrawer && <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />}
+        <Body style={{ flexShrink: 1, flexGrow: 1, display: "flex", flexDirection: "row" }}>
+            {props.allowDrawer && <Icon name="menu" onPress={() => props.navigation.dispatch(DrawerActions.toggleDrawer())} style={styles.menu} />}
             <Title style={styles.title}>
                 {props.title ?
                     props.title :

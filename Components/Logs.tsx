@@ -1,16 +1,18 @@
-import React from "react"
+import React, { PureComponent } from "react"
 import { Page } from "./Page";
-import { Right, Text, Left, ListItem, Item } from "native-base";
+import { Right, Text, Left, ListItem, Item, Icon, View } from "native-base";
 import db from "../Classes/Database";
-import { ListRenderItemInfo, FlatList } from "react-native";
 import moment from "moment";
 import GlobalEvents, { Event, GlobalEventListener } from "../Classes/GlobalEvents";
 import { NavigationParams, NavigationState, NavigationScreenProp, NavigationEventSubscription } from "react-navigation";
+import DateSectionList from "./DateSectionList";
+import { Animated } from "react-native";
 
 interface Log {
     message: String,
     time: Date,
     rowid: number,
+    data?: string,
 }
 
 interface State {
@@ -62,6 +64,7 @@ export default class Logs extends Page<Props, State> {
                 message: item.message,
                 time: new Date(item.time * 1000),
                 rowid: item.rowid,
+                data: item.data,
             })
         }
 
@@ -72,17 +75,79 @@ export default class Logs extends Page<Props, State> {
 
     render() {
         return (
-            <FlatList data={this.state.logs} keyExtractor={i => i.rowid.toString()} renderItem={itemInfo => (
-                <ListItem>
-                    <Left>
-                        <Text>{itemInfo.item.message}</Text>
-                    </Left>
-                    <Right>
-                        <Text>{moment(itemInfo.item.time).format("M/D/YY hh:mm:ss a")}</Text>
-                    </Right>
-                </ListItem>
-            )} />
+            <DateSectionList items={this.state.logs} getItemDate={i => i.time} keyExtractor={i => i.rowid.toString()}
+                renderItem={i => <LogRow log={i.item} />} />
+        )
+    }
+}
 
+interface LogRowProps {
+    log: Log,
+}
+
+interface LogRowState {
+    dataVisible: boolean,
+    rowHeight?: Animated.Value | number,
+    titleHeight: number,
+}
+
+class LogRow extends PureComponent<LogRowProps, LogRowState> {
+    state: LogRowState = {
+        dataVisible: false,
+        titleHeight: 0,
+    }
+    maxDataHeight: number = 0
+
+    titleTouchEnd() {
+        var finalValue: number;
+
+        this.setState(prev => {
+            const initialValue = prev.dataVisible ? this.maxDataHeight + prev.titleHeight : prev.titleHeight
+
+            finalValue = prev.dataVisible ? prev.titleHeight : this.maxDataHeight + prev.titleHeight;
+
+            return {
+                dataVisible: !prev.dataVisible,
+                rowHeight: new Animated.Value(initialValue),
+            }
+        }, () => Animated.spring(
+            this.state.rowHeight as Animated.Value,
+            {
+                toValue: finalValue
+            }
+        ).start())
+    }
+
+    titleLayout(height: number) {
+        this.setState({ titleHeight: height, rowHeight: height })
+    }
+
+    dataLayout(height: number) {
+        this.maxDataHeight = height;
+    }
+
+    render() {
+        const log = this.props.log;
+
+        return (
+            <ListItem style={{ display: "flex", width: "100%", flexDirection: "column", overflow: "hidden" }}>
+                <Animated.View style={{ display: "flex", width: "100%", flexDirection: "column", height: this.state.rowHeight, overflow: "hidden" }}>
+                    <View onTouchEnd={() => this.titleTouchEnd()} style={{ display: "flex", width: "100%", flexDirection: "row", flexShrink: 0, flexGrow: 0 }} onLayout={e => this.titleLayout(e.nativeEvent.layout.height)}>
+                        <View style={{ flexGrow: 1, flexShrink: 1 }}>
+                            <Text>{log.message}</Text>
+                        </View>
+                        <View style={{ flexGrow: 0, flexShrink: 0, paddingLeft: 10, paddingRight: 10 }}>
+                            <Text>{moment(log.time).format("h:mm:ss a")}</Text>
+                        </View>
+                        {log.data && <View style={{ flexGrow: 0, flexShrink: 0, paddingRight: 10 }}>
+                            <Icon name={!this.state.dataVisible ? "chevron-thin-down" : "chevron-thin-up"} type="Entypo" />
+                        </View>}
+                    </View>
+                    {log.data && this.state.rowHeight && <View onLayout={e => this.dataLayout(e.nativeEvent.layout.height)} style={{ flexGrow: 0, flexShrink: 0 }}>
+                        <Text>{log.data}</Text>
+                    </View>}
+                </Animated.View>
+            </ListItem>
         )
     }
 }

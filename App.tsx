@@ -90,10 +90,10 @@ export default class App extends Component<Props, State> {
     async componentDidMount() {
         SQLite.enablePromise(true);
 
-        if(Platform.OS == "android") {
+        if (Platform.OS == "android") {
             var gpsPermission = await PermissionsAndroid.check("android.permission.ACCESS_COARSE_LOCATION")
 
-            while(!gpsPermission) {
+            while (!gpsPermission) {
                 gpsPermission = await PermissionsAndroid.requestPermission("android.permission.ACCESS_COARSE_LOCATION")
             }
         }

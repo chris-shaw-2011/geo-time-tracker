@@ -188,8 +188,10 @@ android {
 }
 
 dependencies {
+    implementation project(':react-native-vector-icons')
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation "com.facebook.react:react-native:+"  // From node_modules
+    implementation "com.facebook.react:react-native:+"
+    implementation 'com.google.android.gms:play-services-location:17.0.0'// From node_modules
 
     if (enableHermes) {
       def hermesPath = "../../node_modules/hermesvm/android/";

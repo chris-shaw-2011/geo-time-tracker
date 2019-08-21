@@ -2,7 +2,7 @@ import React from "react"
 import { Text, Button, ListItem, Left, Right, Icon } from "native-base";
 import { Page } from "./Page";
 import styles from "../Classes/Styles";
-import { NavigationScreenProp, NavigationState, NavigationParams, SectionList } from "react-navigation";
+import { NavigationScreenProp, NavigationState, NavigationParams } from "react-navigation";
 import Timecard from "../Classes/Timecard";
 import moment from "moment"
 import { Guid } from "guid-typescript";
@@ -11,22 +11,18 @@ import Loading from "./Loading";
 import GlobalEvents, { Event, GlobalEventListener } from "../Classes/GlobalEvents"
 import { View, SectionListRenderItemInfo } from "react-native";
 import GeolocationHelpers from "../Classes/GeolocationHelpers"
+import DataSectionList from "./DateSectionList"
 
 interface Props {
     navigation: NavigationScreenProp<NavigationState, NavigationParams>
 }
 
 interface State {
-    sections: Section[],
+    timecards: Timecard[],
     loading: boolean,
     lastUpdate: Date,
     clockingIn: boolean,
     clockingOut: boolean,
-}
-
-interface Section {
-    title: String,
-    data: Timecard[],
 }
 
 export default class Timecards extends Page<Props, State> {
@@ -45,7 +41,7 @@ export default class Timecards extends Page<Props, State> {
 
         this.state = {
             loading: true,
-            sections: [],
+            timecards: [],
             lastUpdate: new Date(),
             clockingIn: false,
             clockingOut: false,
@@ -115,29 +111,9 @@ export default class Timecards extends Page<Props, State> {
         })
 
         const timecardRows = (await db.executeSql("SELECT rowid, id, timeIn, originalTimeIn, timeOut, originalTimeOut, description FROM timecard ORDER BY timeIn DESC"))[0].rows;
-        var sections: Section[] = [];
-        const timecards = Timecard.fromDatabase(timecardRows);
-
-        timecards.forEach(t => {
-            const title = moment(t.timeIn).format("MMMM Do YYYY");
-            var section: Section
-
-            if (sections.length == 0 || sections[sections.length - 1].title != title) {
-                section = {
-                    title: title,
-                    data: []
-                }
-                sections.push(section)
-            }
-            else {
-                section = sections[sections.length - 1]
-            }
-
-            section.data.push(t)
-        })
 
         this.setState({
-            sections: sections,
+            timecards: Timecard.fromDatabase(timecardRows),
             loading: false,
         })
     }
@@ -149,22 +125,13 @@ export default class Timecards extends Page<Props, State> {
 
         return (
             <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0, display: "flex", flexDirection: "column" }}>
-                <SectionList sections={this.state.sections} stickySectionHeadersEnabled={true}
-                    keyExtractor={(item) => (item as Timecard).id.toString()}
-                    renderSectionHeader={({ section }) => {
-                        const data = section.data as Timecard[]
-
-                        return (
-                            <View style={{ backgroundColor: "lightgrey", alignItems: "center" }}>
-                                <Text style={{ fontWeight: 'bold' }}>{section.title}</Text>
-                                <Text>
-                                    {this.millisecondsToHours(data.reduce((total, t) => {
-                                        return total + (t.timeOut || new Date()).getTime() - t.timeIn.getTime()
-                                    }, 0))} hours
-                                </Text>
-                            </View>
-                        )
-                    }}
+                <DataSectionList items={this.state.timecards} getItemDate={(i) => i.timeIn} keyExtractor={i => i.id.toString()}
+                    renderSectionHeaderAdditionalData={i => <Text>
+                        {this.millisecondsToHours(i.data.reduce((total, t) => {
+                            return total + (t.timeOut || new Date()).getTime() - t.timeIn.getTime()
+                        }, 0))} hours
+                        </Text>
+                    }
                     renderItem={(args: SectionListRenderItemInfo<Timecard>) => {
                         const item = args.item
                         return (
@@ -178,7 +145,7 @@ export default class Timecards extends Page<Props, State> {
                                     <View style={{ display: "flex", flexDirection: "row" }}>
                                         <Text style={{ paddingRight: 5 }}>
                                             {this.millisecondsToHours((item.timeOut || new Date()).getTime() - item.timeIn.getTime())} hours
-                                            </Text>
+                                        </Text>
                                         <Icon name="arrow-forward" />
                                     </View>
                                 </Right>

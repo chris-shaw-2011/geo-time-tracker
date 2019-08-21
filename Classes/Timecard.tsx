@@ -1,74 +1,52 @@
 import { LatLng } from "react-native-maps";
 import { Guid } from "guid-typescript"
 import { ResultSetRowList } from "react-native-sqlite-storage";
-import moment from "moment";
 import db from "./Database";
 import GelocationHelpers from "./GeolocationHelpers"
+import { DeviceEventEmitter, NativeModules } from 'react-native';
 
-export interface TimecardCoordinate {
-    coordinate: LatLng,
-    accuracy: number,
+const GpsTracking: GpsTracking = NativeModules.GpsTracking;
+
+export interface TimecardEvent {
+    coordinate?: LatLng,
+    accuracy?: number,
     time: Date,
     id: Guid,
+    message: string,
+}
+
+interface NewEvent {
+    latitude?: number,
+    longitude?: number,
+    accuracy?: number,
+    time: number,
+    message: string,
+}
+
+interface GpsTracking {
+    startTracking: (beginDate: number) => Promise<void>
+    stopTracking: () => Promise<void>
 }
 
 var _activeTimecard: ActiveTimecard | undefined;
+const locationUpdate = (data: NewEvent) => {
+    db.logMessage("NewEvent", data);
 
-/*BackgroundGeolocation.configure({
-    desiredAccuracy: BackgroundGeolocation.HIGH_ACCURACY,
-    debug: false,
-    startOnBoot: true,
-    stopOnTerminate: false,
-    locationProvider: BackgroundGeolocation.RAW_PROVIDER,
-    interval: 5 * 60 * 1000,
-    fastestInterval: 5 * 60 * 1000,
-    stopOnStillActivity: false,
-});
-
-BackgroundGeolocation.on('location', (location) => {
-    db.logMessage("Location Updated");
-    if(_activeTimecard) {
+    if (_activeTimecard) {
         db.addTimecardCoordinate({
             id: Guid.create(),
-            coordinate: {
-                latitude: location.latitude,
-                longitude: location.longitude,
-            },
-            accuracy: location.accuracy,
-            time: new Date(location.time),
+            coordinate: data.latitude && data.longitude ? {
+                latitude: data.latitude,
+                longitude: data.longitude,
+            } : undefined,
+            accuracy: data.accuracy,
+            time: new Date(data.time),
+            message: data.message,
         }, _activeTimecard.id)
     }
-});
+}
 
-BackgroundGeolocation.on('error', (error) => {
-    db.logMessage(`[ERROR] BackgroundGeolocation error: ${error.message}`)
-});
-
-BackgroundGeolocation.on('start', () => {
-    db.logMessage('[INFO] BackgroundGeolocation service has been started');
-});
-
-BackgroundGeolocation.on('stop', () => {
-    db.logMessage('[INFO] BackgroundGeolocation service has been stopped');
-});
-
-BackgroundGeolocation.on('authorization', (status) => {
-    db.logMessage(`[INFO] BackgroundGeolocation authorization status: ${status}`);
-});
-
-BackgroundGeolocation.on('background', () => {
-    db.logMessage('[INFO] App is in background');
-  });
-
-  BackgroundGeolocation.on('foreground', () => {
-    db.logMessage('[INFO] App is in foreground');
-  });
-
-  BackgroundGeolocation.headlessTask((event) => {
-      db.logMessage(`[INFO] Headless task ${event.name}: ${event.params}`)
-
-    return 'Processing event: ' + event.name; // will be logged
-});*/
+DeviceEventEmitter.addListener('locationUpdate', locationUpdate);
 
 export default class Timecard {
     static fromDatabase(rows: ResultSetRowList) {
@@ -87,16 +65,12 @@ export default class Timecard {
 
     static set activeTimecard(activeTimecard: ActiveTimecard | undefined) {
         if (_activeTimecard && (!activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
-            //BackgroundGeolocation.stop();
+            GpsTracking.stopTracking();
         }
 
         if (activeTimecard && (!_activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
             const showId = activeTimecard.rowId!.toString()
-            /*BackgroundGeolocation.configure({
-                notificationTitle: "Clocked In",
-                notificationText: `Since ${moment(activeTimecard.timeIn).format('MMMM Do YYYY, h:mm a')}`,
-            })
-            BackgroundGeolocation.start();*/
+            GpsTracking.startTracking(activeTimecard.timeIn.getTime());
         }
 
         _activeTimecard = activeTimecard
@@ -168,6 +142,7 @@ export class ActiveTimecard extends Timecard {
             },
             accuracy: pos.coords.accuracy,
             time: dt,
+            message: "",
         }, this.id)
     }
 }

@@ -6,7 +6,7 @@ type LogInSuccessful = (username: string, token: string) => Promise<void>;
 type LogOut = () => Promise<void>;
 type UpdateGeofence = (newGeofence?: Geofence, originalName?: string) => Promise<void>;
 type SetTitle = (title: string) => void
-type UpdateTimecard = (newTimeCard:Timecard) => Promise<void>;
+type UpdateTimecard = (newTimeCard: Timecard) => Promise<void>;
 
 interface GlobalSettingsConstructor {
     username?: string;
