@@ -24,29 +24,38 @@ interface NewEvent {
 }
 
 interface GpsTracking {
-    startTracking: (beginDate: number) => Promise<void>
+    startTracking: (beginDate: number, updateInterval: number) => Promise<void>
     stopTracking: () => Promise<void>
 }
 
 var _activeTimecard: ActiveTimecard | undefined;
-const locationUpdate = (data: NewEvent) => {
-    db.logMessage("NewEvent", data);
-
+const addTimecardEvent = (data: NewEvent) => {
     if (_activeTimecard) {
-        db.addTimecardCoordinate({
-            id: Guid.create(),
-            coordinate: data.latitude && data.longitude ? {
-                latitude: data.latitude,
-                longitude: data.longitude,
-            } : undefined,
-            accuracy: data.accuracy,
-            time: new Date(data.time),
-            message: data.message,
-        }, _activeTimecard.id)
+        db.addTimecardEvent(Guid.create(), new Date(data.time), data.message, _activeTimecard.id, data.latitude, data.longitude, data.accuracy)
     }
+}
+const locationUpdate = (data: NewEvent) => {
+    db.logMessage("NewEvent - locationUpdate", data);
+    addTimecardEvent(data)
+}
+const gpsDisabled = (data: NewEvent) => {
+    db.logMessage("NewEvent - gpsDisabled", data)
+    addTimecardEvent(data)
+}
+
+const gpsEnabled = (data: NewEvent) => {
+    db.logMessage("NewEvent - gpsEnabled", data)
+    addTimecardEvent(data)
+}
+
+const locationPermissionRevoked = (data: NewEvent) => {
+    db.logMessage("NewEvent - locationPermissionRevoked")
+    addTimecardEvent(data)
 }
 
 DeviceEventEmitter.addListener('locationUpdate', locationUpdate);
+DeviceEventEmitter.addListener("gpsDisabled", gpsDisabled)
+DeviceEventEmitter.addListener("gpsEnabled", gpsEnabled)
 
 export default class Timecard {
     static fromDatabase(rows: ResultSetRowList) {
@@ -69,8 +78,7 @@ export default class Timecard {
         }
 
         if (activeTimecard && (!_activeTimecard || _activeTimecard.id.toString() != activeTimecard.id.toString())) {
-            const showId = activeTimecard.rowId!.toString()
-            GpsTracking.startTracking(activeTimecard.timeIn.getTime());
+            GpsTracking.startTracking(activeTimecard.timeIn.getTime(), 60 * 1 * 1000);
         }
 
         _activeTimecard = activeTimecard
@@ -134,15 +142,6 @@ export class ActiveTimecard extends Timecard {
         const dt = new Date(pos.timestamp);
 
         await db.updateTimecard(new Timecard(this.id, this.timeIn, dt, this.originalTimeIn, this.originalTimeOut, this.description, this.rowId))
-        await db.addTimecardCoordinate({
-            id: Guid.create(),
-            coordinate: {
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-            },
-            accuracy: pos.coords.accuracy,
-            time: dt,
-            message: "",
-        }, this.id)
+        await db.addTimecardEvent(Guid.create(), dt, "Clock Out", this.id, pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy)
     }
 }

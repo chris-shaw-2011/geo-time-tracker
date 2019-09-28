@@ -118,8 +118,8 @@ class Database implements SQLite.SQLiteDatabase {
         GlobalEvents.emit(Event.TimecardUpdate)
     }
 
-    public async addTimecardCoordinate(event: TimecardEvent, timecardId: Guid) {
-        await db.executeSql("INSERT INTO timecardEvent (id, timecardId, latitude, longitude, accuracy, time, message) VALUES(?, ?, ?, ?, ?, ?, ?)", [event.id.toString(), timecardId.toString(), event.coordinate ? event.coordinate.latitude : null, event.coordinate ? event.coordinate.longitude : null, event.accuracy, event.time.getTime() / 1000, event.message])
+    public async addTimecardEvent(id: Guid, time: Date, message: string, timecardId: Guid, latitude?: number, longitude?: number, accuracy?: number, ) {
+        await db.executeSql("INSERT INTO timecardEvent (id, timecardId, latitude, longitude, accuracy, time, message) VALUES(?, ?, ?, ?, ?, ?, ?)", [id.toString(), timecardId.toString(), latitude ? latitude : null, longitude ? longitude : null, accuracy ? accuracy : null, time.getTime() / 1000, message])
 
         GlobalEvents.emit(Event.TimecardCoordinateAdded);
     }

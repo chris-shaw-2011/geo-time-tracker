@@ -6,7 +6,7 @@ import moment from "moment";
 import GlobalEvents, { Event, GlobalEventListener } from "../Classes/GlobalEvents";
 import { NavigationParams, NavigationState, NavigationScreenProp, NavigationEventSubscription } from "react-navigation";
 import DateSectionList from "./DateSectionList";
-import { Animated } from "react-native";
+import { Animated, LayoutChangeEvent } from "react-native";
 
 interface Log {
     message: String,
@@ -98,6 +98,14 @@ class LogRow extends PureComponent<LogRowProps, LogRowState> {
     }
     maxDataHeight: number = 0
 
+    constructor(props: LogRowProps) {
+        super(props)
+
+        this.dataLayout = this.dataLayout.bind(this);
+        this.titleLayout = this.titleLayout.bind(this);
+        this.titleTouchEnd = this.titleTouchEnd.bind(this);
+    }
+
     titleTouchEnd() {
         var finalValue: number;
 
@@ -118,12 +126,12 @@ class LogRow extends PureComponent<LogRowProps, LogRowState> {
         ).start())
     }
 
-    titleLayout(height: number) {
-        this.setState({ titleHeight: height, rowHeight: height })
+    titleLayout(e: LayoutChangeEvent) {
+        this.setState({ titleHeight: e.nativeEvent.layout.height, rowHeight: e.nativeEvent.layout.height })
     }
 
-    dataLayout(height: number) {
-        this.maxDataHeight = height;
+    dataLayout(e: LayoutChangeEvent) {
+        this.maxDataHeight = e.nativeEvent.layout.height;
     }
 
     render() {
@@ -132,7 +140,7 @@ class LogRow extends PureComponent<LogRowProps, LogRowState> {
         return (
             <ListItem style={{ display: "flex", width: "100%", flexDirection: "column", overflow: "hidden" }}>
                 <Animated.View style={{ display: "flex", width: "100%", flexDirection: "column", height: this.state.rowHeight, overflow: "hidden" }}>
-                    <View onTouchEnd={() => this.titleTouchEnd()} style={{ display: "flex", width: "100%", flexDirection: "row", flexShrink: 0, flexGrow: 0 }} onLayout={e => this.titleLayout(e.nativeEvent.layout.height)}>
+                    <View onTouchEnd={this.titleTouchEnd} style={{ display: "flex", width: "100%", flexDirection: "row", flexShrink: 0, flexGrow: 0 }} onLayout={this.titleLayout}>
                         <View style={{ flexGrow: 1, flexShrink: 1 }}>
                             <Text>{log.message}</Text>
                         </View>
@@ -143,7 +151,7 @@ class LogRow extends PureComponent<LogRowProps, LogRowState> {
                             <Icon name={!this.state.dataVisible ? "chevron-thin-down" : "chevron-thin-up"} type="Entypo" />
                         </View>}
                     </View>
-                    {log.data && this.state.rowHeight && <View onLayout={e => this.dataLayout(e.nativeEvent.layout.height)} style={{ flexGrow: 0, flexShrink: 0 }}>
+                    {log.data && this.state.rowHeight && <View onLayout={this.dataLayout} style={{ flexGrow: 0, flexShrink: 0 }}>
                         <Text>{log.data}</Text>
                     </View>}
                 </Animated.View>

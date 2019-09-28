@@ -76,7 +76,6 @@ export default class Timecards extends Page<Props, State> {
         })
 
         const id = Guid.create();
-        const location = await GeolocationHelpers.getCurrentPosition();
 
         await db.updateTimecard(new Timecard(id, new Date()))
 

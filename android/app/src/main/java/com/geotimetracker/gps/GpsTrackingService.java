@@ -46,23 +46,14 @@ import java.util.Objects;
 public class GpsTrackingService extends Service {
     private static final String TAG = GpsTrackingService.class.getSimpleName();
 
+    private static final String SHARED_PREFERENCE_NAME = "GpsTrackingService";
+
     /**
      * The name of the channel for notifications.
      */
     private static final String CHANNEL_ID = "channel_01";
 
     private final IBinder mBinder = new LocalBinder();
-
-    /**
-     * The desired interval for location updates. Inexact. Updates may be more or less frequent.
-     */
-    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 5 * 60000;
-
-    /**
-     * The fastest rate for active location updates. Updates will never be more frequent
-     * than this value.
-     */
-    private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS = UPDATE_INTERVAL_IN_MILLISECONDS;
 
     /**
      * The identifier for the notification displayed for the foreground service.
@@ -84,6 +75,7 @@ public class GpsTrackingService extends Service {
     private Handler serviceHandler;
 
     private Boolean gpsDisabled = false;
+    private Boolean hasPermission = false;
 
     LocationManager locationManager;
 
@@ -157,9 +149,9 @@ public class GpsTrackingService extends Service {
         super.onRebind(intent);
     }
 
-    public void start(Date beginDate) {
+    public void start(Date beginDate, int updateInterval) {
         this.beginDate = beginDate;
-        requestLocationUpdates();
+        requestLocationUpdates(updateInterval);
         startForeground(NOTIFICATION_ID, getNotification());
         registerReceiver(gpsSwitchStateReceiver, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
     }
@@ -175,14 +167,13 @@ public class GpsTrackingService extends Service {
         serviceHandler.removeCallbacksAndMessages(null);
     }
 
-    public void requestLocationUpdates() {
+    public void requestLocationUpdates(int updateInterval) {
         Log.i(TAG, "Requesting location updates");
         startService(new Intent(getApplicationContext(), GpsTrackingService.class));
         LocationRequest locationRequest = LocationRequest.create()
-            .setInterval(UPDATE_INTERVAL_IN_MILLISECONDS)
-            .setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS)
+            .setInterval(updateInterval)
+            .setFastestInterval(updateInterval)
             .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        boolean hasPermission;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             hasPermission = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
@@ -192,10 +183,28 @@ public class GpsTrackingService extends Service {
         }
 
         if(hasPermission) {
+            getSharedPreferences(SHARED_PREFERENCE_NAME, MODE_PRIVATE).edit().putBoolean("hadLocationPermission", true).apply();
+
             fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
         }
-        else {
-            sendLocationUpdate(null, null, null, System.currentTimeMillis(), "Lost location permission.");
+        else if (getSharedPreferences(SHARED_PREFERENCE_NAME, MODE_PRIVATE).getBoolean("hadLocationPermission", false)){
+            MainApplication application = (MainApplication) this.getApplication();
+
+            ReactNativeHost reactNativeHost = application.getReactNativeHost();
+            ReactInstanceManager reactInstanceManager = reactNativeHost.getReactInstanceManager();
+            ReactContext reactContext = reactInstanceManager.getCurrentReactContext();
+
+            if (reactContext != null) {
+                WritableNativeMap params = new WritableNativeMap();
+
+                params.putDouble("time", System.currentTimeMillis());
+                params.putString("message", "Location permission has been revoked");
+
+                reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                        .emit("locationPermissionRevoked", params);
+
+                getSharedPreferences(SHARED_PREFERENCE_NAME, MODE_PRIVATE).edit().putBoolean("hadLocationPermission", false).apply();
+            }
         }
     }
 
@@ -203,7 +212,7 @@ public class GpsTrackingService extends Service {
         long diff = (System.currentTimeMillis() - beginDate.getTime()) / 1000;
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentText(String.format(Locale.getDefault(), "Since: %s (%d:%02d)", DateFormat.getDateTimeInstance().format(beginDate), diff / 3600, (diff % 3600) / 60))
+                .setContentText(String.format(Locale.getDefault(), "Since: %s (%d:%02d%s)", DateFormat.getDateTimeInstance().format(beginDate), diff / 3600, (diff % 3600) / 60, !hasPermission ? " - location denied" : gpsDisabled ? " - gps disabled" : ""))
                 .setContentTitle("Clocked In")
                 .setOngoing(true)
                 .setPriority(Notification.PRIORITY_HIGH)
@@ -215,10 +224,10 @@ public class GpsTrackingService extends Service {
     private void onNewLocation(Location location) {
         Log.i(TAG, "New location: " + location);
 
-        sendLocationUpdate(location.getLatitude(), location.getLongitude(), (double) location.getAccuracy(), location.getTime(), "");
+        sendLocationUpdate(location.getLatitude(), location.getLongitude(), (double) location.getAccuracy(), location.getTime());
     }
 
-    private void sendLocationUpdate(Double latitude, Double longitude, Double accuracy, double time, String message) {
+    private void sendLocationUpdate(Double latitude, Double longitude, Double accuracy, double time) {
         MainApplication application = (MainApplication) this.getApplication();
 
         ReactNativeHost reactNativeHost = application.getReactNativeHost();
@@ -246,7 +255,7 @@ public class GpsTrackingService extends Service {
                 params.putNull("accuracy");
             }
             params.putDouble("time", time);
-            params.putString("message", message);
+            params.putString("message", "");
 
             reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                     .emit("locationUpdate", params);
@@ -277,13 +286,43 @@ public class GpsTrackingService extends Service {
 
     private void onGpsEnabled() {
         gpsDisabled = false;
-        sendLocationUpdate(null, null, null, System.currentTimeMillis(), "Location has been enabled");
+        MainApplication application = (MainApplication) this.getApplication();
+
+        ReactNativeHost reactNativeHost = application.getReactNativeHost();
+        ReactInstanceManager reactInstanceManager = reactNativeHost.getReactInstanceManager();
+        ReactContext reactContext = reactInstanceManager.getCurrentReactContext();
+
+        if (reactContext != null) {
+            WritableNativeMap params = new WritableNativeMap();
+
+            params.putDouble("time", System.currentTimeMillis());
+            params.putString("message", "Location has been enabled");
+
+            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit("gpsEnabled", params);
+        }
+
         notificationManager.notify(NOTIFICATION_ID, getNotification());
     }
 
     private void onGpsDisabled() {
         gpsDisabled = true;
-        sendLocationUpdate(null, null, null, System.currentTimeMillis(), "Location has been disabled");
+        MainApplication application = (MainApplication) this.getApplication();
+
+        ReactNativeHost reactNativeHost = application.getReactNativeHost();
+        ReactInstanceManager reactInstanceManager = reactNativeHost.getReactInstanceManager();
+        ReactContext reactContext = reactInstanceManager.getCurrentReactContext();
+
+        if (reactContext != null) {
+            WritableNativeMap params = new WritableNativeMap();
+
+            params.putDouble("time", System.currentTimeMillis());
+            params.putString("message", "Location has been disabled");
+
+            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit("gpsDisabled", params);
+        }
+
         notificationManager.notify(NOTIFICATION_ID, getNotification());
     }
 }

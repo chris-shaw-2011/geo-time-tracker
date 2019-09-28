@@ -8,8 +8,10 @@ import AsyncStorage from '@react-native-community/async-storage';
 import { AppStatus } from "./Classes/Enumerations";
 import Timecard, { ActiveTimecard } from './Classes/Timecard';
 import PushNotification from "react-native-push-notification"
-import { DeviceEventEmitter, PermissionsAndroid, Platform } from 'react-native';
+import { DeviceEventEmitter, PermissionsAndroid, Platform, Alert, AlertButton } from 'react-native';
 import db from "./Classes/Database"
+import AndroidOpenSettings from 'react-native-android-open-settings-async'
+import { Guid } from "guid-typescript"
 
 PushNotification.configure({
 
@@ -90,12 +92,59 @@ export default class App extends Component<Props, State> {
     async componentDidMount() {
         SQLite.enablePromise(true);
 
-        if (Platform.OS == "android") {
-            var gpsPermission = await PermissionsAndroid.check("android.permission.ACCESS_COARSE_LOCATION")
+        const activeTimecard = Timecard.fromDatabase((await db.executeSql("SELECT *, rowid FROM timecard WHERE timeOut is null"))[0].rows).pop();
+        var hadLocationPermission = (await AsyncStorage.getItem("hadLocationPermission")) == "true"
 
-            while (!gpsPermission) {
-                gpsPermission = await PermissionsAndroid.requestPermission("android.permission.ACCESS_COARSE_LOCATION")
+        Timecard.activeTimecard = activeTimecard ? new ActiveTimecard(activeTimecard) : undefined;
+
+        if (Platform.OS == "android") {
+            const title = "Location Permission Required";
+            const message = "In order to use this app you must grant location access";
+            const permission = "android.permission.ACCESS_FINE_LOCATION";
+
+            while (!(await PermissionsAndroid.check(permission))) {
+                if (hadLocationPermission && activeTimecard) {
+                    //await db.addTimecardEvent(Guid.create(), new Date(), "Location Permission Removed", activeTimecard.id)
+
+                    hadLocationPermission = false;
+                    await AsyncStorage.setItem("hadLocationPermission", "false")
+                }
+
+                var permissionResponse = await PermissionsAndroid.request(permission, {
+                    title: title,
+                    message: message,
+                    buttonPositive: "Ok"
+                });
+
+                if (permissionResponse == "granted") {
+                    break;
+                }
+                else if (permissionResponse == "never_ask_again") {
+                    await new Promise((resolve) => {
+                        const alertButtons: AlertButton[] = [{
+                            text: "Open Settings",
+                            onPress: () => {
+                                AndroidOpenSettings.appDetailsSettings().then(() => {
+                                    resolve("yes")
+                                })
+                            },
+                        }]
+                        Alert.alert(title, message, alertButtons,
+                            {
+                                cancelable: false,
+                                onDismiss: () => resolve("yes")
+                            })
+                    })
+                }
             }
+        }
+
+        if (!hadLocationPermission) {
+            if (activeTimecard) {
+                await db.addTimecardEvent(Guid.create(), new Date(), "Location Permission Granted", activeTimecard.id)
+            }
+
+            await AsyncStorage.setItem("hadLocationPermission", "true")
         }
 
         await this.loadInitialData()
@@ -105,11 +154,7 @@ export default class App extends Component<Props, State> {
         var username = await AsyncStorage.getItem("username") || "";
         var token = await AsyncStorage.getItem("token") || "";
         var geofences = await this.loadGeofencesFromDb();
-        const activeTimecard = Timecard.fromDatabase((await db.executeSql("SELECT *, rowid FROM timecard WHERE timeOut is null"))[0].rows).pop();
 
-        Timecard.activeTimecard = activeTimecard ? new ActiveTimecard(activeTimecard) : undefined;
-
-        //        setTimeout(() => {
         this.setState(({ globalSettings }) => {
             return {
                 appStatus: token && username ? AppStatus.LoggedIn : AppStatus.NotLoggedIn,
@@ -125,7 +170,6 @@ export default class App extends Component<Props, State> {
                 })
             }
         })
-        //    }, 10000)
     }
 
     async logIn(username: string, token: string) {

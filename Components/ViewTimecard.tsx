@@ -197,7 +197,7 @@ export default class ViewTimecard extends Page<Props, State> {
             return <Loading />
         }
 
-        const eventsWithCoords = this.state.events.filter(t => t.coordinate != undefined);
+        const eventsWithCoords = this.state.events.filter(e => e.coordinate);
 
         return (
             <View style={styles.fill}>
@@ -205,7 +205,7 @@ export default class ViewTimecard extends Page<Props, State> {
                     style={{ height: "100%", flexGrow: 1, flexShrink: 1 }}
                     ref={ref => this.map = ref}
                     mapType="satellite"
-                    onMapReady={() => this.map && this.map.fitToCoordinates(eventsWithCoords.map(t => t.coordinate!))}
+                    onMapReady={() => this.map && eventsWithCoords.length && this.map.fitToCoordinates(eventsWithCoords.map(t => t.coordinate!))}
                 >
                     <GlobalSettingsContext.Consumer>
                         {value =>

@@ -43,8 +43,8 @@ public class GpsTrackingModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void startTracking(double beginDate, Promise promise) {
-        locationService.start(new Date(Double.valueOf(beginDate).longValue()));
+    public void startTracking(double beginDate, int updateInterval, Promise promise) {
+        locationService.start(new Date(Double.valueOf(beginDate).longValue()), updateInterval);
 
         promise.resolve("success");
     }
