@@ -14,8 +14,6 @@
     "guid-typescript": "^1.0.9",
     "moment": "^2.24.0",
     "native-base": "^2.13.5",
-    "react": "16.8.6",
-    "react-native": "0.60.4",
     "react-native-android-open-settings-async": "^1.4.0",
     "react-native-gesture-handler": "^1.3.0",
     "react-native-maps": "^0.25.0",
@@ -23,24 +21,26 @@
     "react-native-sqlite-storage": "^3.3.11",
     "react-native-vector-icons": "^6.6.0",
     "react-native-version-number": "^0.3.6",
-    "react-navigation": "^3.11.1"
+    "react-navigation": "^3.11.1",
+    "react": "16.8.6",
+    "react-native": "0.60.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.5.5",
-    "@babel/runtime": "^7.5.5",
-    "@react-native-community/eslint-config": "^0.0.5",
     "@types/jest": "^24.0.17",
     "@types/react": "^16.8.25",
     "@types/react-native": "^0.60.3",
     "@types/events": "^3.0.0",
     "@types/react-native-push-notification": "^3.0.6",
     "@types/react-native-sqlite-storage": "^3.3.1",
+    "typescript": "^3.5.3",
+    "@babel/core": "^7.5.5",
+    "@babel/runtime": "^7.5.5",
+    "@react-native-community/eslint-config": "^0.0.5",
     "babel-jest": "^24.8.0",
     "eslint": "^6.1.0",
     "jest": "^24.8.0",
-    "metro-react-native-babel-preset": "^0.55.0",
-    "react-test-renderer": "16.8.6",
-    "typescript": "^3.5.3"
+    "metro-react-native-babel-preset": "^0.56.0",
+    "react-test-renderer": "16.8.6"
   },
   "jest": {
     "preset": "react-native"
