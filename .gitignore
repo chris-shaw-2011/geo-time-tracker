@@ -56,8 +56,5 @@ buck-out/
 *.jsbundle
 /android/app/src/main/assets/index.android.bundle
 
-/android/.classpath
-/android/.project
-/android/.settings
-/android/gradle/
-/android/gradlew
+# CocoaPods
+/ios/Pods/
